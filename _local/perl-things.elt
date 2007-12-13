@@ -1,0 +1,13 @@
+(require 'test-more)
+(runtests (is-deeply '(9 . 17) 
+                     (with-temp-string "this is Foo::Bar"
+                      (bounds-of-module-at-point))
+                     "Foo::Bar is found in a string")
+          (is-deeply '(9 . 17) 
+                     (with-temp-string "this is Foo::Bar->"
+                      (bounds-of-module-at-point))
+                     "Foo::Bar is found when point is after a ->")
+          (is-deeply '(1 . 4)
+                     (with-temp-string
+                      "$foo"
+                      (bounds-of-var-at-point))))
