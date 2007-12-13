@@ -36,5 +36,10 @@
     (insert-string (format "Result: %s\n\n" (if (not fail) "PASS" "FAIL")))
     (list pass fail)))
 
-(defun is-deeply (a b &optional message)
-  (cons (cons-eq a b) message))
+(defun is-deeply (got expected &optional message)
+  (let ((result (cons-eq got expected)))
+    (if (not result)
+        (setq message 
+              (concat message 
+                      (format "\n# got:      %s\n# expected: %s" got expected))))
+    (cons result message)))
