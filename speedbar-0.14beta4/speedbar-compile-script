@@ -1,0 +1,3 @@
+(add-to-list 'load-path nil)
+(add-to-list 'load-path ".")
+(setq debug-on-error t)
