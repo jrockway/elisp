@@ -1,5 +1,3 @@
-(provide 'test-more)
-
 (defmacro with-temp-string (string &rest body)
   `(with-temp-buffer (insert-string ,string) ,@body))
 
@@ -13,6 +11,9 @@
 
 (defmacro push-test (var)
   `(setq ,var (append ,var (list (cons counter message)))))
+
+(defun mk-testmore-error (file line error)
+  (list (file line error)))
 
 (defun runtests (&rest tests)
   (let ((buf (or (get-buffer "*runtests*") 
@@ -40,6 +41,8 @@
   (let ((result (cons-eq got expected)))
     (if (not result)
         (setq message 
-              (concat message 
-                      (format "\n# got:      %s\n# expected: %s" got expected))))
+         (concat message 
+                 (format "\n# got:      %s\n# expected: %s" got expected))))
     (cons result message)))
+
+(provide 'test-more)

@@ -1,19 +1,32 @@
-(provide 'cperl-extras)
 (require 'thingatpt)
+(require 'perl-things)
 
-(defun perl-insert-debug-statement ()
-  (interactive)
-  (insert-string "use YAML; die Dump(")
-  (set-mark (point))
-  (insert-string ");")
-  (exchange-point-and-mark))
+(defun prepare-var-for-dump (var)
+  (let* ((type (substring var 0 1)))
+    (if (equal type "$") var (concat "\\" var))))
+
+(defun perl-insert-debug-statement (comment)
+  "Insert 'use YAML; die Dump(`var')' where `var' is the variable near the
+   point.  If invoked with an argument, comments out the line where `var' 
+   is found."
+  (interactive "P")
+  (let ((var (or (thing-at-point 'perl-variable)
+                 (read-from-minibuffer "Expression to dump: "))))
+    (if comment (progn 
+                  (beginning-of-line)
+                  (cperl-indent-command)
+                  (insert-string "# ")))
+    (end-of-line)
+    (insert-string (format "\nuse YAML; die Dump(%s);" 
+                           (prepare-var-for-dump var)))
+    (cperl-indent-command)))
 
 (defun increment-number-at-point (&optional amount)
   "Increment the number under point by `amount'"
   (interactive "p")
   (let ((num (number-at-point)))
     (when (numberp num)
-      (let ((newnum (+ num amount))
+      (let ((newnum (+ num amount)) 
             (p (point)))
         (save-excursion
           (skip-chars-backward "-.0123456789")
@@ -28,8 +41,8 @@
   (save-excursion
     (goto-char (point-min))
     (condition-case nil
-        (re-search-forward "tests\s+=>\s+" nil nil nil)
-        (error (error "No Test::More counter found!")))
+        (re-search-forward "tests\s+=>\s+")
+      (error (error "No Test::More counter found!")))
     (message "Counter is now %d" (increment-number-at-point amount))))
 
 (defun read-with-default (string &optional default error)
@@ -59,3 +72,5 @@
         (error (goto-char 0)))
       (end-of-line)
       (insert (concat "\nuse " (add-semicolon module))))))
+
+(provide 'cperl-extras)

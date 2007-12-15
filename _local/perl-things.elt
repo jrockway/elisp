@@ -14,4 +14,3 @@
           (is-deeply (with-temp-string "my %foo"
                                        (bounds-of-var-at-point))
                      '(4 . 8) "%foo is found in 'my %foo'"))
-          

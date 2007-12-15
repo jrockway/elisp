@@ -1,5 +1,4 @@
 ; this file is "things" for thing-at-point related to Perl
-
 (require 'thingatpt)
 
 (defun backwards-chars-then-look-for (backwards &optional forward)
@@ -19,8 +18,10 @@
 
 (defun bounds-of-var-at-point ()
   "Determine where a perl variable name starts for (thing-at-point 'perl-variable)"
-  (backwards-chars-then-look-for "[:alpha:]_$@#%*&" "[[:alpha:]_$@#%*&]+"))
+  (backwards-chars-then-look-for "[:alpha:]_$@#%*&=" "[[:alpha:]_$@#%*&]+"))
 
 ; tell thing-at-point about this stuff
 (put 'perl-module   'bounds-of-thing-at-point 'bounds-of-module-at-point)
 (put 'perl-variable 'bounds-of-thing-at-point 'bounds-of-var-at-point)
+
+(provide 'perl-things)
