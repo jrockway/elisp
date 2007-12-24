@@ -74,10 +74,11 @@
       (insert (concat "\nuse " (add-semicolon module))))))
 
 (defun insert-self-shift (noshift)
+  (interactive)
   (if noshift
       (insert-string "my ($self) = @_;\n")
     (insert-string "my $self = shift;\n"))
-    (cperl-indent))
+  (cperl-indent-command))
 
 (defun cpan-install ()
   (interactive)
