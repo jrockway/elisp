@@ -5,7 +5,7 @@
   "Starting from the point, look backwards for start of something enjoyable,  
    then look forwards for the end of it.  Return the start and end as a cons
    cell, or nil if we don't see anything."
-  (if (not forward) (setq forward (format "[%s]" backwards)))
+  (if (not forward) (setq forward (format "[%s]+" backwards)))
   (save-excursion
     (skip-chars-backward backwards)  ; backwards to start of interest
     (if (looking-at forward)         ; forward to the end of it
