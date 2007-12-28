@@ -64,14 +64,18 @@
   "Add a new perl use statement after the existing use statements."
   (interactive)
   (let ((module (read-with-default "Module" (thing-at-point 'perl-module)
-                                   "You must specify a module to use!")))
+                                   "You must specify a module to use!"))
+        after statement)
     (save-excursion
       (goto-char (point-max))
       (condition-case nil
-          (re-search-backward "^\\(use .+;\\)")
+          (progn (re-search-backward "^\\(use [[:alnum:]:]+\;\\)")
+                 (setq after (match-string 1)))
         (error (goto-char 0)))
       (end-of-line)
-      (insert (concat "\nuse " (add-semicolon module))))))
+      (setq statement (concat "use " (add-semicolon module)))
+      (insert (concat "\n" statement))
+      (message (format "Added '%s' after '%s'" statement after)))))
 
 (defun insert-self-shift (noshift)
   (interactive)
