@@ -95,4 +95,11 @@
 
 (global-set-key "\C-c\C-i" 'cpan-install)
 
+(defun find-tests (&optional filename)
+  (interactive)
+  (if (not filename) (setq filename (buffer-file-name)))
+  (if (string-match "/lib/.+$" filename)
+      (find-file (replace-match "/t" nil nil filename))
+    (error "No idea where the tests are!")))
+
 (provide 'cperl-extras)
