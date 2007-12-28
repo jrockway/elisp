@@ -58,11 +58,7 @@
   (local-set-key (kbd "\C-c p g") 'perly-sense-smart-go-to-at-point)
   (local-set-key (kbd "\C-c p c") 'perly-sense-class-overview-for-class-at-point)
   (local-set-key (kbd "\C-c p a") 'perly-sense-display-api-for-class-at-point)
-  (local-set-key (kbd "\C-c p \C-m") 'perly-sense-class-mode)
-  (local-set-key "\C-ct" 'increment-test-counter)
-  (local-set-key "\C-cu" 'add-use)
-  (local-set-key "\C-cd" 'perl-insert-debug-statement)
-  (local-set-key "\C-cs" 'insert-self-shift))
+  (local-set-key (kbd "\C-c p \C-m") 'perly-sense-class-mode))
 
 ;;; hooks
 ;(setq last-kbd-macro
@@ -112,6 +108,12 @@
 (defun underscore ()
   (interactive)
   (insert-string "_"))
+
+;;; advice
+(require 'flymake)
+(defadvice flymake-perl-init (after fix-flymake-perl-path)
+  (setcar ad-return-value "/home/jon/perl/install/bin/perl"))
+(ad-activate 'flymake-perl-init)
 
 ;;; key-bindings
 (global-set-key [kp-decimal] 'goto-line)
@@ -182,6 +184,7 @@
  '(erc-whowas-on-nosuchnick t)
  '(eudc-protocol (quote ldap))
  '(eudc-server "ldap.uchicago.edu")
+ '(flymake-allowed-file-name-masks (quote (("\\.c\\'" flymake-simple-make-init) ("\\.cpp\\'" flymake-simple-make-init) ("\\.xml\\'" flymake-xml-init) ("\\.html?\\'" flymake-xml-init) ("\\.cs\\'" flymake-simple-make-init) ("\\.p[lm]\\'" flymake-perl-init) ("\\.t\\'" flymake-perl-init) ("\\.h\\'" flymake-master-make-header-init flymake-master-cleanup) ("\\.java\\'" flymake-simple-make-java-init flymake-simple-java-cleanup) ("[0-9]+\\.tex\\'" flymake-master-tex-init flymake-master-cleanup) ("\\.tex\\'" flymake-simple-tex-init) ("\\.idl\\'" flymake-simple-make-init))))
  '(flyspell-issue-welcome-flag nil)
  '(flyspell-mode-line-string " Spell ")
  '(font-lock-global-modes t)
@@ -233,6 +236,8 @@
  '(cperl-array ((((class color) (background dark)) (:background "navy" :foreground "yellow"))))
  '(cperl-hash ((((class color) (background dark)) (:background "navy" :foreground "Red"))))
  '(cursor ((t (:background "turquoise" :inverse-video t))))
+ '(flymake-errline ((((class color)) (:box (:line-width 2 :color "red" :style released-button)))))
+ '(flymake-warnline ((((class color)) (:box (:line-width 2 :color "yellow" :style released-button)))))
  '(flyspell-duplicate-face ((t (:foreground "Blue" :inverse-video t :weight bold))) t)
  '(flyspell-incorrect-face ((t (:foreground "OrangeRed" :inverse-video t :weight bold))) t)
  '(mode-line ((((class color) (min-colors 88)) (:background "grey" :foreground "black" :height 0.8)))))

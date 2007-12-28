@@ -102,4 +102,12 @@
       (find-file (replace-match "/t" nil nil filename))
     (error "No idea where the tests are!")))
 
+(add-hook 'cperl-mode-hook 
+          (lambda ()
+            (local-set-key "\C-ct" 'increment-test-counter)
+            (local-set-key "\C-cu" 'add-use)
+            (local-set-key "\C-cd" 'perl-insert-debug-statement)
+            (local-set-key "\C-cs" 'insert-self-shift)
+            (local-set-key "\C-cT" 'find-tests)))
+
 (provide 'cperl-extras)
