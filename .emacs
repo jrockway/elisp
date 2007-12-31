@@ -2,7 +2,6 @@
 (add-to-list 'load-path "/home/jon/elisp")
 (add-to-list 'load-path "/home/jon/elisp/haskell-mode/")
 (add-to-list 'load-path "/home/jon/elisp/ecb")
-(add-to-list 'load-path "/home/jon/elisp/git")
 (add-to-list 'load-path "~/elisp/eieio-0.17")
 (add-to-list 'load-path "~/elisp/speedbar-0.14beta4/")
 (add-to-list 'load-path "~/elisp/semantic-1.4.4")
@@ -28,7 +27,7 @@
 (autoload 'chop "chop")
 (require 'template)
 (template-initialize)
-(require 'git)
+;(require 'git)
 (require 'amarok)
 (require 'javascript-mode)
 (require 'perly-sense)
@@ -112,7 +111,9 @@
 ;;; advice
 (require 'flymake)
 (defadvice flymake-perl-init (after fix-flymake-perl-path)
-  (setcar ad-return-value "/home/jon/perl/install/bin/perl"))
+  (setq ad-return-value 
+        (list "/home/jon/perl/install/bin/perl"
+              (list "-c " (cadadr ad-return-value)))))
 (ad-activate 'flymake-perl-init)
 
 ;;; key-bindings
