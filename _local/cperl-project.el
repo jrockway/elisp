@@ -6,8 +6,19 @@
       (find-file (replace-match "/t" nil nil filename))
     (error "No idea where the tests are!")))
 
-(defun look-for-Makefile.PL (filename)
-  "Look for a Makefile.PL in the directories above filename"
+(defun perl-project-includes (&optional filename)
+  "Given FILENAME (by default, `buffer-file-name'), return list of -I
+flags to pass to perl."
+  (when (not (or (perl-module-lib-file-p filename)
+                 (perl-model-t-file-p filename)
+                 (string-match "/\\(?:lib\\|t)/.+$" filename)))
+    (error "Not a perl library or test!"))
+  (list (concat (replace-match "" nil nil filename) "/lib")))
+
+(defun look-for-Makefile.PL (&optional filename)
+  "Look for a Makefile.PL in the directories above FILENAME, or
+the current buffer's filename if FILENAME is not specified."
+  (if (not filename) (setq filename (buffer-file-name)))
   (let (found)
     (while (and (not found) (not (equal filename "/")))
       (let ((try (expand-file-name (concat filename "/Makefile.PL"))))
@@ -79,10 +90,19 @@ prereqs in a (requires . build-requires) cons cell"
       (insert (format "%s '%s';\n" type def))
     (insert (format "%s '%s' => %s;\n" type (car def) (cdr def)))))
 
+(defun sort-modules (a b)
+  (string< (if (listp a) (car a) a)
+           (if (listp b) (car b) b)))
+
 (defun rewrite-Makefile.PL-requires (requires)
   "Given a (requires . build-require) cons cell REQUIRES, kill
 the existing requires and build_requires statements and
 regenerate them from the REQUIRES list"
+  (let ((r (car requires))
+        (b (cdr requires)))
+    (setq r (sort r 'sort-modules))
+    (setq b (sort b 'sort-modules))
+    (setq requires (cons r b)))
   (let (where)
     (save-excursion-rewind ; first, blow away requires
       (while (zerop (forward-line 1))
@@ -110,15 +130,17 @@ regenerate them from the REQUIRES list"
   "Visits MAKEFILE and adds elements of REQUIRES to the requires
 section of it; if BUILD-REQUIRES is non-nil, add the elements of
 the list to the build_requires section."
-  (find-file makefile)
-  (protect-unwind (kill-buffer nil)
-    (let* ((all (parse-Makefile.PL))
-           (r (car all))
-           (b (cdr all)))
-      (mapc (lambda (arg) (add-to-list 'r arg)) requires)
-      (mapc (lambda (arg) (add-to-list 'b arg)) build-requires)
-      (rewrite-Makefile.PL-requires (cons r b))
-      (save-buffer))))
+  (save-excursion
+    (let ((kill-when-done (not (find-buffer-visiting makefile))))
+      (protect-unwind (if kill-when-done (kill-buffer nil))
+        (find-file makefile)
+        (let* ((all (parse-Makefile.PL))
+               (r (car all))
+               (b (cdr all)))
+          (mapc (lambda (arg) (add-to-list 'r arg)) requires)
+          (mapc (lambda (arg) (add-to-list 'b arg)) build-requires)
+          (rewrite-Makefile.PL-requires (cons r b))
+          (save-buffer))))))
 
 (defun add-requires-to-Makefile.PL-by-file-type (&rest modules)
   (let* ((f (buffer-file-name))
@@ -135,5 +157,9 @@ the list to the build_requires section."
   (let ((module (read-with-default "Module" (thing-at-point 'perl-module)
                                    "You must specify a module!")))
     (add-requires-to-Makefile.PL-by-file-type module)))
+
+(defun visit-Makefile.PL ()
+  (interactive)
+  (find-file (look-for-Makefile.PL)))
 
 (provide 'cperl-project)
