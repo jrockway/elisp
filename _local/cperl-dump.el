@@ -13,9 +13,9 @@
     (if comment (progn 
                   (beginning-of-line)
                   (cperl-indent-command)
-                  (insert-string "# ")))
+                  (insert "# ")))
     (end-of-line)
-    (insert-string (format "\nuse YAML; die Dump(%s);" 
+    (insert (format "\nuse YAML; die Dump(%s);" 
                            (prepare-var-for-dump var)))
     (cperl-indent-command)))
 

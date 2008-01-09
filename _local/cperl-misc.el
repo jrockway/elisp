@@ -2,8 +2,8 @@
 (defun insert-self-shift (noshift)
   (interactive)
   (if noshift
-      (insert-string "my ($self) = @_;\n")
-    (insert-string "my $self = shift;\n"))
+      (insert "my ($self) = @_;\n")
+    (insert "my $self = shift;\n"))
   (cperl-indent-command))
 
 (defun cpan-install ()
@@ -13,7 +13,7 @@
 
     (start-process "cpan-process" "*cpan-install*"
                    "/home/jon/perl/install/bin/cpanp" "install" module)
-    (show-buffer (split-window) "*cpan-install*")))
+    (set-window-buffer (split-window) "*cpan-install*")))
 
 (global-set-key "\C-c\C-i" 'cpan-install)
 

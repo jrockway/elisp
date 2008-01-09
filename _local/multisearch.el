@@ -23,9 +23,9 @@ list of (search . replacement) cons cells"
                  (replace (cdr term)))
             (if (and (looking-at search) 
                      (y-or-n-p (format "Replace match for '%s' with '%s'? "
-                                       search replace))
+                                       search replace)))
                      (progn (setq found t)
-                            (replace-match replace)))))
+                            (replace-match replace))))
           (setq terms (cdr terms)))))))
 
 (defun multisearch ()

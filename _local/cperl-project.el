@@ -9,8 +9,9 @@
 (defun perl-project-includes (&optional filename)
   "Given FILENAME (by default, `buffer-file-name'), return list of -I
 flags to pass to perl."
+  (if (not filename) (setq filename (buffer-file-name)))
   (when (not (or (perl-module-lib-file-p filename)
-                 (perl-model-t-file-p filename)
+                 (perl-module-test-file-p filename)
                  (string-match "/\\(?:lib\\|t)/.+$" filename)))
     (error "Not a perl library or test!"))
   (list (concat (replace-match "" nil nil filename) "/lib")))
@@ -117,7 +118,7 @@ regenerate them from the REQUIRES list"
         (if where (goto-char where) ; where the old stuff was
           (bounds-of                ; or before WriteAll()
            (or (re-search-forward "WriteAll" nil t) (goto-char (point-max)))))
-        (if (not (save-excursion (previous-line) (looking-at "^$")))
+        (if (not (save-excursion (forward-line -1) (looking-at "^$")))
             (insert "\n"))
         (mapc (lambda (arg) (write-requires-line (car arg) (cdr arg)))
               (append 

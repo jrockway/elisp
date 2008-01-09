@@ -1,5 +1,5 @@
 (defmacro with-temp-string (string &rest body)
-  `(with-temp-buffer (insert-string ,string) ,@body))
+  `(with-temp-buffer (insert ,string) ,@body))
 
 (defmacro cons-eq (a b)
   (let ((atmp (make-symbol "a"))
@@ -13,7 +13,7 @@
   `(setq ,var (append ,var (list (cons counter message)))))
 
 (defun mk-testmore-error (file line error)
-  (list (file line error)))
+  (list file line error))
 
 (defun runtests (&rest tests)
   (let ((buf (or (get-buffer "*runtests*") 
@@ -28,13 +28,13 @@
         (setq tests (cdr tests))
         (let ((passed (car test)) 
               (message (cdr test)))
-          (insert-string 
+          (insert 
            (format 
             (if message "%s %d - %s\n" "%s %d\n") 
             (if passed (progn (push-test pass) "ok")
               (progn (push-test fail) "not ok")) 
             counter message)))))
-    (insert-string (format "Result: %s\n\n" (if (not fail) "PASS" "FAIL")))
+    (insert (format "Result: %s\n\n" (if (not fail) "PASS" "FAIL")))
     (list pass fail)))
 
 (defun is-deeply (got expected &optional message)

@@ -16,5 +16,5 @@
                   (setq pos pt))))
           (switch-to-buffer cur) result)))))
 
-(setq f (get-iterator-over-words-in (get-buffer "test buffer")))
-(funcall f)
+;(setq f (get-iterator-over-words-in (get-buffer "test buffer")))
+;(funcall f)

@@ -7,3 +7,5 @@
      (replace-match "use Moose;"))
    (when (re-search-forward "use Moose;" nil t)
      (replace-match "use strict;\nuse warnings;"))))
+
+(provide 'cperl-moose)
