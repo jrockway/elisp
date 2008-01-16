@@ -21,7 +21,8 @@
             (local-set-key "\C-cw" 'swap-strict-and-moose)
             (local-set-key "\C-c\C-f" 'ifind-perl-project-file)
             ; some fucktard overwrites this binding.  fuckers.
-            (local-set-key "\C-c\C-p" 'ifind-perl-projects)))
+            (local-set-key "\C-c\C-p" 'ifind-perl-projects)
+            (local-set-key "\C-cr" 'cperl-repl)))
 
 (global-set-key "\C-c\C-p" 'ifind-perl-projects)
 

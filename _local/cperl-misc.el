@@ -12,10 +12,16 @@
                                    "You must specify a module to install!")))
 
     (split-window)
-    (ansi-term "/home/jon/perl/install/bin/cpanp" "
-cpan-install")
+    (ansi-term "/home/jon/perl/install/bin/cpanp" "cpan-install")
     (term-send-raw-string (format "install %s\n" module))))
 
 (global-set-key "\C-c\C-i" 'cpan-install)
 
 (provide 'cperl-misc)
+
+(defun cperl-repl ()
+  (interactive)
+  (split-window)
+  (if (get-buffer "*perl-repl*")
+      (switch-to-buffer "*perl-repl*")
+    (ansi-term "/home/jon/perl/install/bin/re.pl" "perl-repl")))
