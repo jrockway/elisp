@@ -1,5 +1,6 @@
 
 (require 'icomplete-read)
+(require 'ff-paths)
 
 (defun base-find-tests (find-function &optional filename)
   (if (not filename) (setq filename (buffer-file-name)))
