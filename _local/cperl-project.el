@@ -1,11 +1,20 @@
 
-(defun find-tests (&optional filename)
-  (interactive)
+(require 'icomplete-read)
+
+(defun base-find-tests (find-function &optional filename)
   (if (not filename) (setq filename (buffer-file-name)))
   (if (string-match "/lib/.+$" filename)
-      (find-file (replace-match "/t" nil nil filename))
+      (funcall find-function (replace-match "/t" nil nil filename))
     (error "No idea where the tests are!")))
 
+(defun find-tests (&optional filename)
+  (interactive)
+  (base-find-tests 'find-file filename))
+
+(defun find-tests-other-window ()
+  (interactive)
+  (base-find-tests 'find-file-other-window))
+   
 (defun perl-project-includes (&optional filename)
   "Given FILENAME (by default, `buffer-file-name'), return list of -I
 flags to pass to perl."
@@ -162,5 +171,59 @@ the list to the build_requires section."
 (defun visit-Makefile.PL ()
   (interactive)
   (find-file (look-for-Makefile.PL)))
+
+(defun search-for-perl-files (dir sub)
+  (search-directory-tree 
+   (expand-file-name (concat dir "/" sub)) 
+   "\\.\\(?:pm\\|t\\|pl\\)$" t nil))
+
+(defun mk-shortened-filename-pair (shorten-regexp filename)
+  (string-match regexp filename)
+  (cons (match-string 1 filename) filename))
+
+(defun perl-files-in-dir (dir)
+  (mapcar (lambda (filename) 
+            (mk-shortened-filename-pair 
+             "\\(?:lib\\|t\\|bin\\|script\\)/\\(.+\\)$"
+             filename))
+          (cons
+           (expand-file-name (concat dir "/Makefile.PL"))
+           (append
+            (search-for-perl-files dir "lib")
+            (search-for-perl-files dir "t")
+            (search-for-perl-files dir "bin")
+            (search-for-perl-files dir "script")))))
+
+;(perl-files-in-dir "/home/jon/projects/angerwhale")
+
+(defun icomplete-read-with-alist (prompt alist)
+  (let ((show (mapcar (lambda (x) (car x)) alist)))
+    (cdr (assoc (my-icompleting-read prompt show) alist))))
+
+(defun ifind-perl-project-file (&optional from)
+  (interactive)
+  (let* ((path (expand-file-name (concat (look-for-Makefile.PL from) "/../")))
+         (friendly-alist (perl-files-in-dir path)))
+         (find-file 
+          (icomplete-read-with-alist "Project file: " friendly-alist))))
+
+;(ifind-perl-project-file "/home/jon/projects/angerwhale/lib")
+
+(defun ifind-perl-projects ()
+  (interactive)
+  (let ((candidates (append 
+                     (directory-files "/home/jon/projects" t)
+                     (directory-files "/home/jon/work" t)
+                     (directory-files "/home/jon/projects/cpan_modules" t)))
+        current filtered)
+    (while candidates
+      (setq current (car candidates))
+      (setq candidates (cdr candidates))
+      (if (file-exists-p (expand-file-name (concat current "/Makefile.PL")))
+        (cons current filtered)))
+    (let ((clist (mapcar (lambda (f) 
+                           (mk-shortened-filename-pair "/\\([^/]+\\)$" f))
+                 candidates)))
+      (ifind-perl-project-file (icomplete-read-with-alist "Project: " clist)))))
 
 (provide 'cperl-project)

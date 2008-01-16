@@ -18,4 +18,5 @@
             (local-set-key "\C-cd" 'perl-insert-debug-statement)
             (local-set-key "\C-cs" 'insert-self-shift)
             (local-set-key "\C-cT" 'find-tests)
-            (local-set-key "\C-cw" 'swap-strict-and-moose)))
+            (local-set-key "\C-cw" 'swap-strict-and-moose)
+            (local-set-key "\C-c\C-f" 'ifind-perl-project-file)))
