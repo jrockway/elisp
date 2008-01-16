@@ -178,7 +178,7 @@ the list to the build_requires section."
    "\\.\\(?:pm\\|t\\|pl\\)$" t nil))
 
 (defun mk-shortened-filename-pair (shorten-regexp filename)
-  (string-match regexp filename)
+  (string-match shorten-regexp filename)
   (cons (match-string 1 filename) filename))
 
 (defun perl-files-in-dir (dir)
@@ -220,10 +220,10 @@ the list to the build_requires section."
       (setq current (car candidates))
       (setq candidates (cdr candidates))
       (if (file-exists-p (expand-file-name (concat current "/Makefile.PL")))
-        (cons current filtered)))
+        (setq filtered (cons current filtered))))
     (let ((clist (mapcar (lambda (f) 
                            (mk-shortened-filename-pair "/\\([^/]+\\)$" f))
-                 candidates)))
+                 filtered)))
       (ifind-perl-project-file (icomplete-read-with-alist "Project: " clist)))))
 
 (provide 'cperl-project)
