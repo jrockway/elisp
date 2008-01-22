@@ -142,7 +142,8 @@ regenerate them from the REQUIRES list"
 section of it; if BUILD-REQUIRES is non-nil, add the elements of
 the list to the build_requires section."
   (save-excursion
-    (let ((kill-when-done (not (find-buffer-visiting makefile))))
+    (let ((kill-when-done (not (find-buffer-visiting makefile)))
+          (cperl-no-flymake t)) ; suppress flymake for a file we won't even see
       (protect-unwind (if kill-when-done (kill-buffer nil))
         (find-file makefile)
         (let* ((all (parse-Makefile.PL))
