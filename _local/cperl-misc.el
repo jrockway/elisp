@@ -25,3 +25,10 @@
   (if (get-buffer "*perl-repl*")
       (switch-to-buffer "*perl-repl*")
     (ansi-term "/home/jon/perl/install/bin/re.pl" "perl-repl")))
+
+(defun kill-5.10 ()
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+   (when (re-search-forward "^use feature.+\n" nil t)
+     (replace-match ""))))

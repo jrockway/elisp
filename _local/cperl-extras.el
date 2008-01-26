@@ -22,7 +22,12 @@
             (local-set-key "\C-c\C-f" 'ifind-perl-project-file)
             ; some fucktard overwrites this binding.  fuckers.
             (local-set-key "\C-c\C-p" 'ifind-perl-projects)
+            (local-set-key "\C-c510" 'kill-5.10)
             (local-set-key "\C-cr" 'cperl-repl)))
+
+(add-hook 'tt-mode-hook 
+          (lambda ()
+            (local-set-key "\C-c\C-f" 'ifind-perl-project-file)))
 
 (global-set-key "\C-c\C-p" 'ifind-perl-projects)
 
