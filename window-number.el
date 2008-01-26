@@ -60,7 +60,7 @@
 
 ;; ----------------------------------------------------------------------------
 
-(require 'cl); for set-difference
+(require 'cl); for set-difference and loop
 
 (defun window-number-list ()
   "Returns a list of the windows, in fixed order and the
@@ -104,94 +104,28 @@ minibuffer (even if not active) last."
 (defvar window-number-mode-map nil
   "Keymap for the window number mode.")
 
-(unless window-number-mode-map
-  (setq window-number-mode-map (make-sparse-keymap))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 1")
-    (lambda nil (interactive)
-      (window-number-select 1)))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 2")
-    (lambda nil (interactive)
-      (window-number-select 2)))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 3")
-    (lambda nil (interactive)
-      (window-number-select 3)))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 4")
-    (lambda nil (interactive)
-      (window-number-select 4)))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 5")
-    (lambda nil (interactive)
-      (window-number-select 5)))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 6")
-    (lambda nil (interactive)
-      (window-number-select 6)))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 7")
-    (lambda nil (interactive)
-      (window-number-select 7)))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 8")
-    (lambda nil (interactive)
-      (window-number-select 8)))
-
-  (define-key window-number-mode-map (kbd "C-x C-j 9")
-    (lambda nil (interactive)
-      (window-number-select 9)))
-
-    (define-key window-number-mode-map (kbd "C-x C-j 0")
-    (lambda nil (interactive)
-      (window-number-select 10))))
-
 (defvar window-number-meta-mode-map nil
   "Keymap for the window number meta mode.")
 
+(defmacro window-number-define-keys (mode-map prefix)
+  `(progn 
+     ,@(loop for number from 1 to 10 collect
+             `(define-key ,mode-map 
+                (kbd ,(concat prefix (number-to-string 
+                                      (if (>= number 10) 0 number))))
+                (lambda nil (interactive)
+                  (window-number-select ,number))))))
+
+; define C-x C-j 1 to switch to win 1, etc (C-x C-j 0 = win 10)
+(unless window-number-mode-map
+  (setq window-number-mode-map (make-sparse-keymap))
+  ; space after C-j is important
+  (window-number-define-keys window-number-mode-map "C-x C-j "))
+
+; define M-1 to switch to win 1, etc (M-0 = win 10)
 (unless window-number-meta-mode-map
   (setq window-number-meta-mode-map (make-sparse-keymap))
-
-  (define-key window-number-meta-mode-map (kbd "M-1")
-    (lambda nil (interactive)
-      (window-number-select 1)))
-
-  (define-key window-number-meta-mode-map (kbd "M-2")
-    (lambda nil (interactive)
-      (window-number-select 2)))
-
-  (define-key window-number-meta-mode-map (kbd "M-3")
-    (lambda nil (interactive)
-      (window-number-select 3)))
-
-  (define-key window-number-meta-mode-map (kbd "M-4")
-    (lambda nil (interactive)
-      (window-number-select 4)))
-
-  (define-key window-number-meta-mode-map (kbd "M-5")
-    (lambda nil (interactive)
-      (window-number-select 5)))
-
-  (define-key window-number-meta-mode-map (kbd "M-6")
-    (lambda nil (interactive)
-      (window-number-select 6)))
-
-  (define-key window-number-meta-mode-map (kbd "M-7")
-    (lambda nil (interactive)
-      (window-number-select 7)))
-
-  (define-key window-number-meta-mode-map (kbd "M-8")
-    (lambda nil (interactive)
-      (window-number-select 8)))
-
-  (define-key window-number-meta-mode-map (kbd "M-9")
-    (lambda nil (interactive)
-      (window-number-select 9)))
-
-  (define-key window-number-meta-mode-map (kbd "M-0")
-    (lambda nil (interactive)
-      (window-number-select 10))))
+  (window-number-define-keys window-number-mode-map "M-"))
 
 (if (featurep 'xemacs)
     (define-minor-mode window-number-mode
