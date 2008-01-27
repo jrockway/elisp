@@ -6,7 +6,7 @@
 ;;
 ;; $Id: tt-mode.el,v 1.1.1.1 2006/01/10 21:49:53 dave Exp $
 ;;
-;; This file adds simple font highlighting of TT directives when you are 
+;; This file adds simple font highlighting of TT directives when you are
 ;; editing Template Toolkit files.
 ;;
 ;; I usually give these files an extension of .tt and in order to automatically
@@ -22,7 +22,7 @@
 ;;
 ;; Author: Dave Cross <dave@dave.org.uk>
 ;;
-;; 
+;;
 ;; $Log: tt-mode.el,v $
 ;; Revision 1.1.1.1  2006/01/10 21:49:53  dave
 ;; dave.org.uk web site
@@ -55,20 +55,28 @@
 (defvar tt-mode-hook nil
   "List of functions to call when entering TT mode")
 
-(defvar tt-keywords "\\bGET\\b\\|\\bCALL\\b\\|\\bSET\\b\\|\\bDEFAULT\\b\\|\\bINSERT\\b\\|\\bINCLUDE\\b\\|\\bBLOCK\\b\\|\\bEND\\b\\|\\bPROCESS\\b\\|\\bWRAPPER\\b\\|\\bIF\\b\\|\\bUNLESS\\b\\|\\bELSIF\\b\\|\\bELSE\\b\\|\\bSWITCH\\b\\|\\bCASE\\b\\|\\bFOR\\b\\|\\bFOREACH\\b\\|\\bWHILE\\b\\|\\bFILTER\\b\\|\\bUSE\\b\\|\\bMACRO\\b\\|\\bPERL\\b\\|\\bRAWPERL\\b\\|\\bTRY\\b\\|\\bTHROW\\b\\|\\bCATCH\\b\\|\\bFINAL\\b\\|\\bLAST\\b\\|\\bRETURN\\b\\|\\bSTOP\\b\\|\\bCLEAR\\b\\|\\bMETA\\b\\|\\bTAGS")
+(defvar tt-keywords
+  (concat "\\b\\(?:"
+          (regexp-opt (list "GET" "CALL" "SET" "DEFAULT" "INSERT" "INCLUDE"
+                            "BLOCK" "END" "PROCESS" "WRAPPER" "IF" "UNLESS"
+                            "ELSIF" "ELSE" "SWITCH" "CASE" "FOR" "FOREACH"
+                            "WHILE" "FILTER" "USE" "MACRO" "PERL" "RAWPERL"
+                            "TRY" "THROW" "CATCH" "FINAL" "LAST" "RETURN"
+                            "STOP" "CLEAR" "META" "TAGS"))
+          "\\)\\b"))
 
-(defvar tt-font-lock-keywords 
+(defvar tt-font-lock-keywords
    (list
     ;; Fontify [& ... &] expressions
-    '("\\(\\[%[-+]?\\)\\(.+?\\)\\([-+]?%\\]\\)"  
+    '("\\(\\[%[-+]?\\)\\(.+?\\)\\([-+]?%\\]\\)"
       (1 font-lock-string-face t)
       (2 font-lock-variable-name-face t)
       (3 font-lock-string-face t))
     ;; Look for keywords within those expressions
     (list (concat
 	   "\\[%[-+]? *\\("
-	   tt-keywords 
-	   "\\)") 
+	   tt-keywords
+	   "\\)")
 	  1 font-lock-keyword-face t)
     '("\\[% *\\(#.*?\\)%\\]"
       (1 font-lock-comment-face t))
@@ -90,7 +98,7 @@
     (setq font-lock-defaults '(tt-font-lock-keywords nil t))
     )
   (font-lock-mode)
-  (run-hooks tt-mode-hook))
+  (run-hooks 'tt-mode-hook))
 
 (provide 'tt-mode)
 
