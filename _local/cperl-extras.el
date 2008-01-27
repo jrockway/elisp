@@ -7,6 +7,7 @@
 (require 'cperl-misc)
 (require 'cperl-project)
 (require 'cperl-moose)
+(require 'cperl-reindent)
 (provide 'cperl-extras)
 
 (add-hook 'cperl-mode-hook 
@@ -20,16 +21,13 @@
             (local-set-key "\C-cT" 'find-tests)
             (local-set-key "\C-cw" 'swap-strict-and-moose)
             (local-set-key "\C-c\C-f" 'ifind-perl-project-file)
-            ; some fucktard overwrites this binding.  fuckers.
             (local-set-key "\C-c\C-p" 'ifind-perl-projects)
             (local-set-key "\C-c510" 'kill-5.10)
-            (local-set-key "\C-cr" 'cperl-repl)))
+            (local-set-key "\C-cr" 'cperl-repl)
+            (local-set-key (quote [C-tab]) (quote cperl-reindent-hash))))
 
 (add-hook 'tt-mode-hook 
           (lambda ()
             (local-set-key "\C-c\C-f" 'ifind-perl-project-file)))
 
 (global-set-key "\C-c\C-p" 'ifind-perl-projects)
-
-
-
