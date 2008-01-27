@@ -98,7 +98,7 @@
     (setq font-lock-defaults '(tt-font-lock-keywords nil t))
     )
   (font-lock-mode)
-  (run-hooks 'tt-mode-hook))
+  (run-mode-hooks 'tt-mode-hook))
 
 (provide 'tt-mode)
 
