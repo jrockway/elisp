@@ -32,3 +32,9 @@
     (goto-char (point-min))
    (when (re-search-forward "^use feature.+\n" nil t)
      (replace-match ""))))
+
+(defun cperl-run-buffer ()
+   (interactive)
+   (split-window)
+   (ansi-term (buffer-file-name)))
+
