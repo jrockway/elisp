@@ -1,0 +1,802 @@
+This is sepia.info, produced by makeinfo version 4.8 from sepia.texi.
+
+INFO-DIR-SECTION Emacs
+START-INFO-DIR-ENTRY
+* Sepia: (sepia).    Simple Emacs Perl Integration.
+END-INFO-DIR-ENTRY
+
+
+File: sepia.info,  Node: Top,  Next: Introduction,  Prev: (dir),  Up: (dir)
+
+SEPIA
+*****
+
+   Sepia is a set of Perl development tools for Emacs supporting code
+navigation and interactive evaluation.
+
+* Menu:
+
+* Introduction::
+* Editing::
+* Interactive Perl::
+* CPAN browsing::
+* Customization::
+* Internals::
+* Credits::
+* Function Index::
+
+
+File: sepia.info,  Node: Introduction,  Next: Editing,  Prev: Top,  Up: Top
+
+1 Introduction
+**************
+
+Sepia is a set of tools for Perl development in Emacs.  Its goal is to
+extend CPerl mode to support fast code navigation and interactive
+development.  It is inspired by Emacs' current support for a number of
+other languages, including Lisp, Python, and Emacs Lisp.
+
+* Menu:
+
+* Getting Started::
+* Philosophy::
+
+
+File: sepia.info,  Node: Getting Started,  Next: Philosophy,  Prev: Introduction,  Up: Introduction
+
+1.1 Getting Started
+===================
+
+To install Sepia, its Emacs Lisp files must be in Emacs' `load-path',
+and the `lib' directory must be in Perl's `@INC'.  Assuming that Sepia
+has been unpacked in `~/sepia', it can be installed by adding the
+following lines to `~/.emacs':
+
+     (add-to-list 'load-path "~/sepia")
+     (setq sepia-perl5lib (list (expand-file-name "~/sepia/lib")))
+     (defalias 'perl-mode 'sepia-mode)
+     (require 'sepia)
+
+   Then to bring up the interactive Perl prompt, type `M-x sepia-repl'.
+
+
+File: sepia.info,  Node: Philosophy,  Prev: Getting Started,  Up: Introduction
+
+1.2 Philosophy
+==============
+
+A development environment should support three activities: code
+spelunking, interaction, and customization.  Emacs as an environment for
+developing Emacs Lisp thoroughly supports all of them: It has commands
+to visit individual functions' code and documentation, commands to
+evaluate or step through expressions, and an architecture that
+encourages customization in Emacs Lisp.  As an environment for Perl,
+however, it is lacking: there is limited interactivity with the Perl
+debugger, and reasonable documentation browsing, but no support for
+navigating, editing, and re-evaluating code.  Sepia attempts to remedy
+the situation.
+
+   Modern IDEs also support these three activities, but do so awkwardly.
+Rather than having functions to visit definitions (`find-function') and
+search for functions (`apropos'), they clutter the screen with class
+and file trees.  Rather than supporting interactive evaluation of small
+pieces of code, they perform background semantic checking on whole
+projects and highlight errors.  Rather than allowing minor
+customizations to grow organically into features, they support limited
+configuration files and baroque plug-in APIs.  Sepia tries to adhere to
+the apparent Emacs philosophy that rich semantic information should be
+unobtrusive, and that the best way to build working code is to start by
+experimenting with small pieces.
+
+   Language support packages for Emacs vary widely in the degree to
+which they make use of or replace existing Emacs features.  Minimal
+modes provide keyword-based syntax highlighting and an unadorned comint
+buffer as an interpreter.  Others provide their own specialized
+equivalents of comint, eldoc, completion, and other Emacs features.
+Sepia takes a third approach by trying to do as much as possible with
+existing Emacs features, even when they are not optimal for Perl.  For
+example, it uses comint to communicate with the subprocess, eldoc to
+display documentation, and grep to list source locations.
+
+   This approach has three advantages: First, it maximizes the number of
+features that can be supported with limited development time.  Second,
+it respects users' settings.  A seasoned Emacs user may have changed
+hundreds of settings, so a mode that reimplements features will have to
+support equivalent settings, and will force the user to re-specify them.
+Finally, this approach respects decades of development spent, as Neal
+Stephenson put it, "focused with maniacal intensity on the deceptively
+simple-seeming problem of editing text."  Many non-obvious choices go
+into making a polished interface, and while a reimplementation gets rid
+of accumulated cruft, it must rediscover these hidden trade-offs.
+
+   Anyways, I hope you enjoy using Sepia.  Its development style is
+strange for someone used Perl's typical mix of one-liners and
+edit-save-run, but once you are accustomed to it, you may find it very
+effective.
+
+
+File: sepia.info,  Node: Editing,  Next: Interactive Perl,  Prev: Introduction,  Up: Top
+
+2 Editing
+*********
+
+Sepia's first contribution is a set of commands to explore a Perl
+codebase.  These include commands to browse and display documentation,
+to find function definitions, and to query a cross-reference database of
+function and variable uses.  Sepia also provides intelligent symbol
+completion.
+
+* Menu:
+
+* Completion::
+* Navigation::
+* Documentation::
+
+
+File: sepia.info,  Node: Completion,  Next: Navigation,  Prev: Editing,  Up: Editing
+
+2.1 Completion
+==============
+
+Sepia implements partial-word completion that communicates with the
+inferior Perl process.  For example, `%S:X:v_u' completes to
+`%Sepia::Xref::var_use' when Sepia is loaded.  This completion only
+operates on functions and global variables known to the Perl
+interpreter, so it works best when code and interpreter are in sync.
+
+   More precisely, completion examines the text before point and tries
+each of the following in turn, using the first successful approach:
+
+  1. If the text looks like a method call (e.g. `$object->f' or
+     `Class->f'), complete on methods.
+
+  2. If it looks like a variable (e.g. `%hash' or `$scalar'), complete
+     on variables.
+
+  3. Complete on modules and functions.
+
+  4. Otherwise, complete on Perl built-in operators.
+
+   For each of the first three cases, completions candidates are first
+generated by splitting the text on characters `[:_]' and matching the
+resulting word parts.  For example, `X:a_b' will complete to all
+symbols matching `^X[^:]*:+a[^:_]*_b' such as `Xref::a_bug' and
+`X::always_bites_me'.  If no matches result, the text is treated as an
+acronym.  For example, `dry' will complete to `dont_repeat_yourself'.
+
+   Completion is performed by the following commands:
+`M-x sepia-complete-symbol'
+     Complete the symbol before point as described above.  Note that
+     this does not consider lexical scope, and is always case-sensitive,
+     independent of `completion-ignore-case'.
+
+`TAB'
+`M-x sepia-indent-or-complete'
+     First try to reindent the current line.  If its indentation does
+     not change, then try to expand an abbrev at point (unless
+     `sepia-indent-expand-abbrev' is `nil').  If no abbrev is expanded,
+     then call `sepia-complete-symbol'.
+
+
+
+File: sepia.info,  Node: Navigation,  Next: Documentation,  Prev: Completion,  Up: Editing
+
+2.2 Navigation
+==============
+
+Sepia provides several commands for navigating program source.  All of
+them rely on information from the inferior Perl process, so it is
+important both that it be running, and that its internal representation
+of the program match the program source.  The commands marked (Xref)
+below also rely on a cross-reference database, which must be explicitly
+rebuilt by calling `xref-rebuild' when the program changes.
+
+   There are two basic kinds of navigation commands.  The first kind
+jumps directly to the first matching location when possible, prompting
+only if no such location is found.  These commands find only a single
+location.
+
+`M-. M-.'
+`M-x sepia-dwim'
+     Guess what kind of identifier is at point, and try to do the right
+     thing: for a function, find its definition(s); for a variable,
+     find its uses; for a module, view its documentation; otherwise,
+     prompt for the name of a function to visit.  `sepia-dwim'
+     automatically goes to the first function definition or variable
+     use found.
+
+`M-. l'
+`M-x sepia-location'
+     Jump directly to the definition of the function at point,
+     prompting if point is not on a known function.  If multiple
+     definitions are found, choose one arbitrarily.  This function is
+     similar to `sepia-defs', and the two should probably be merged.
+
+`M-. j'
+`M-x sepia-jump-to-symbol'
+     Navigate to a function using "ido" interactive completion.  Within
+     interactive completion, press <:> to descend into a package, <DEL>
+     to ascend to a parent package, and <RET> to go to the
+     currently-selected function.
+
+
+   The second kind of navigation commands always prompts the user -
+though usually with a sensible default value - and finds multiple
+locations.  When called with a prefix argument, these commands present
+their results in a `grep-mode' buffer.  When called _without_ a prefix
+argument, they place all results on the found-location ring and jump
+directly to the first.  The remaining locations can be cycled through by
+calls to `sepia-next'.
+
+`M-. f NAME <RET>'
+`M-x sepia-defs'
+     Find definition(s) of function NAME.
+
+`M-. m NAME <RET>'
+`M-x sepia-module-find NAME <RET>'
+     Find the source of module NAME.
+
+`M-. a REGEXP <RET>'
+`M-x sepia-apropos REGEXP <RET>'
+     Find definitions of all functions whose names match REGEXP.
+
+`M-. c NAME <RET>'
+`M-x sepia-callers NAME <RET>'
+     (Xref) Find calls to function NAME.
+
+`M-. C NAME <RET>'
+`M-x sepia-callees NAME <RET>'
+     (Xref) Find the definitions of functions called by NAME.
+
+`M-. v NAME <RET>'
+`M-x sepia-var-uses NAME <RET>'
+     (Xref) Find uses of the global variable NAME.
+
+`M-. V NAME <RET>'
+`M-x sepia-var-defs NAME <RET>'
+     (Xref) Find definitions of global variable NAME.  Since Perl's
+     global variables are not declared, this is rarely useful
+
+
+   Finally, there are several other navigation-related commands that do
+not fit into either of the above categories.
+
+`M-,'
+`M-x sepia-next'
+     Cycle through the definitions found by the previous <M-.> search.
+
+`M-. r'
+`M-x sepia-rebuild'
+     Rebuild the cross-reference database by walking the op-tree and
+     stashes.
+
+`M-. t'
+`M-x find-tag'
+     Execute the `find-tag' command typically bound to <M-.>.
+
+
+
+File: sepia.info,  Node: Documentation,  Prev: Navigation,  Up: Editing
+
+2.3 Documentation
+=================
+
+Sepia can be used to browse installed modules' documentation, to format
+and display the current buffer's POD, and to browse the list of modules
+installed on the system.
+
+`M-. d NAME <RET>'
+`M-x sepia-perldoc-this'
+     View documentation for module NAME or Perl manual page NAME.
+
+`C-c C-d'
+`M-x sepia-view-pod'
+     Format and view the current buffer's documentation.
+
+`sepia-package-list'
+     Browse a tree of installed packages.  This lists only the top-level
+     packages from installed distributions, so if package `My::Stuff'
+     also provides `My::Stuff::Details', it will not be displayed.  When
+     Emacs-w3m is available, each module is linked to its documentation.
+
+`sepia-module-list'
+     Browse a tree of both top-level and internal packages, like
+     `sepia-package-list'.
+
+
+   Sepia also integrates with eldoc (at least in GNU Emacs >= 22).
+Documentation for Perl operators and control structures is taken from
+CPerl mode.  Sepia will also display documentation for user-defined
+functions if their POD is formatted in the standard way, with functions
+described in a "=head2" or "=item" entry.  To load user documentation,
+visit the relevant file and type `M-x sepia-doc-update'.
+
+   If `Module::CoreList' is available, Sepia's eldoc function will also
+display the first version of Perl with which a module was shipped.
+This is intended to give the programmer a sense of when he is creating
+external dependencies.
+
+
+File: sepia.info,  Node: Interactive Perl,  Next: CPAN browsing,  Prev: Editing,  Up: Top
+
+3 Interactive Perl
+******************
+
+Sepia's second main contribution is an interactive interface (REPL) to
+an inferior Perl process.  The interface is based on GUD mode, and
+inherits many of its bindings; this chapter discusses only the Sepia
+extensions.  To start or switch to the repl, type `M-x sepia-repl'.  As
+in Sepia mode, <TAB> in the REPL performs partial-word completion with
+`sepia-complete-symbol'.
+
+   Sepia also provides a number of other ways to evaluate pieces of
+code in Perl, and commands to process buffer text using the inferior
+process.
+
+* Menu:
+
+* Shortcuts::
+* Debugger::
+* Evaluation::
+* Mutilation::
+* Scratchpad::
+
+
+File: sepia.info,  Node: Shortcuts,  Next: Debugger,  Prev: Interactive Perl,  Up: Interactive Perl
+
+3.1 Shortcuts
+=============
+
+"Shortcuts" are commands handled specially by the REPL rather than
+being evaluated as Perl code.  They either communicate with the REPL
+function, or provide a convenient interface to variables in the Sepia
+package.  Shortcuts are prefixed by a comma (<,>), and may be
+abbreviated to the shortest unique prefix.
+
+`cd DIR'
+     Change Perl's current directory to DIR.
+
+`debug [VAL]'
+     Turn Sepia debugger hook on or off, or toggle if VAL is missing.
+
+`define NAME ['DOC'] BODY...'
+     Define NAME as a shortcut for Perl code BODY, with optional
+     documentation DOC, surrounded by single quotes.  BODY is passed
+     the raw command-line text as its first argument.
+
+`delete'
+     Delete the current breakpoint.
+
+`format TYPE'
+     Set the output format to TYPE, either "dumper" (using
+     `Data::Dumper'), "dump" (`Data::Dump'), "yaml" (`YAML'), or
+     "plain" (stringification).  Default: "dumper".
+
+`help'
+     Display a list of shortcuts.
+
+`lsbreak'
+     List breakpoints.
+
+`methods NAME [REGEXP]'
+     Display a list of functions defined in package NAME and its
+     `ISA'-ancestors matching optional pattern REGEXP.
+
+`package NAME'
+     Set the default evaluation package to NAME.
+
+`pwd'
+     Show the process's current working directory.
+
+`quit'
+     Exit the inferior Perl process.
+
+`reload'
+     Reload `Sepia.pm' and recursively invoke the REPL.  This command is
+     mostly of interest when working on Sepia itself.
+
+`shell [COMMAND]'
+     Execute shell command COMMAND, displaying its standard output and
+     standard error.
+
+`strict [VAL]'
+     Set evaluation strictness to VAL, or toggle it if VAL is not
+     given.  Note that turning strictness off and on clears the REPL's
+     lexical environment.
+
+`undef NAME'
+     Undefine shortcut NAME.  *Warning*: this can equally be used to
+     remove built-in shortcuts.
+
+`wantarray [VAL]'
+     Set the evaluation context to VAL, or toggle between scalar and
+     array context.
+
+`who PACKAGE [REGEXP]'
+`who [REGEXP]'
+     List identifiers in PACKAGE (main by default) matching optional
+     REGEXP.
+
+
+
+File: sepia.info,  Node: Debugger,  Next: Evaluation,  Prev: Shortcuts,  Up: Interactive Perl
+
+3.2 Debugger
+============
+
+Sepia uses Perl's debugger hooks and GUD mode to support conditional
+breakpoints and single-stepping, and overrides Perl's `die()' to invoke
+the debugger rather than unwind the stack.  This makes it possible to
+produce a backtrace, inspect and modify global variables, and even
+continue execution when a program tries to kill itself.  If the
+PadWalker module is available, Sepia also provides functions to inspect
+and modify lexical variables.
+
+   The debugger has its own set of shortcuts, also prefixed by a comma.
+
+`backtrace'
+     Show a backtrace.
+
+`break FILE:LINE [EXPR]'
+     Set a breakpoint in FILE at LINE.  If EXPR is supplied, stop only
+     if it evaluates to true.
+
+`down N'
+`up N'
+     Move the current stack frame up or down by N (or one) frames.
+
+`inspect [N]'
+     Inspect lexicals in the current frame or frame N, counting upward
+     from 1.
+
+`lsbreak'
+     List breakpoints.
+
+`next [N]'
+     Advance N (or one) lines, skipping subroutine calls.
+
+`quit'
+`die'
+`warn'
+     Continue as the program would have executed without debugger
+     intervention, dying if the debugger was called from `die()'.
+
+`return EXPR'
+     Continue execution as if `die()' had returned the value of EXPR,
+     which is evaluated in the global environment.
+
+`step [N]'
+     Step forward N (or one) lines, descending into subroutines.
+
+`xreturn SUB EXPR'
+     Return EXPR from the innermost call to SUB.  This is a somewhat
+     dangerous and experimental feature, but is probably more useful
+     than returning a value from `die()'.
+
+
+
+File: sepia.info,  Node: Evaluation,  Next: Mutilation,  Prev: Debugger,  Up: Interactive Perl
+
+3.3 Evaluation
+==============
+
+When interactive Perl is running, Sepia can evaluate regions of code in
+the inferior Perl process.  The following commands assume that this
+process has already been started by calling `sepia-repl'.
+
+`C-M-x'
+`M-x sepia-eval-defun'
+     Evaluate the function around point in the inferior Perl process.
+     If it contains errors, jump to the location of the first.
+
+`C-c C-l'
+`M-x sepia-load-file'
+     Save the current buffer, then reload its file and if warnings or
+     errors occur, display an error buffer.  With a prefix argument,
+     also rebuild the cross-reference index.
+
+`C-c e'
+`M-x sepia-eval-expression <RET> EXPR <RET>'
+     Evaluate EXPR in scalar context and echo the result.  With a
+     prefix argument, evaluate in list context.
+
+`C-c!'
+`sepia-set-cwd'
+     Set the REPL's working directory to the current buffer's directory.
+
+
+
+File: sepia.info,  Node: Mutilation,  Next: Scratchpad,  Prev: Evaluation,  Up: Interactive Perl
+
+3.4 Mutilation
+==============
+
+Sepia contains several functions to operate on regions of text using the
+interactive Perl process.  These functions can be used like standard
+one-liners (e.g. `perl -pe ...'), with the advantage that all of the
+functions and variables in the interactive session are available.
+
+`M-x sepia-perl-pe-region <RET> CODE <RET>'
+     Evaluate CODE on each line in the region with `$_' bound to the
+     line text, collecting the resulting values of `$_'.  With a prefix
+     argument, replace the region with the result.
+
+`M-x sepia-perl-ne-region <RET> CODE <RET>'
+     Evaluate CODE as above, but collect the results instead.
+
+`M-x sepia-perlize-region <RET> CODE <RET>'
+     Evaluate CODE once with `$_' bound to the entire region,
+     collecting the final value of `$_'.  With a prefix argument,
+     replace the region.
+
+
+
+File: sepia.info,  Node: Scratchpad,  Prev: Mutilation,  Up: Interactive Perl
+
+3.5 Scratchpad
+==============
+
+Sepia also supports a scratchpad, another form of interaction inspired
+by Emacs' `*scratch*' buffer.  To create or switch to the scratchpad,
+type `M-x sepia-scratch'.  Scratchpad mode is exactly like Sepia mode,
+except <C-j> evaluates the current line and prints the result on the
+next line.
+
+
+File: sepia.info,  Node: CPAN browsing,  Next: Customization,  Prev: Interactive Perl,  Up: Top
+
+4 CPAN browsing
+***************
+
+Sepia has rudimentary support for browsing documentation and installing
+modules from CPAN.  To list modules with names matching a pattern, call
+`sepia-cpan-search'.  In the `*sepia-cpan*' buffer, the pressing the
+single keys listed below on the module-name buttons will perform the
+corresponding action on the named module.
+
+`s'
+`M-x sepia-cpan-search <RET> PATTERN <RET>'
+     List modules whose names match PATTERN.
+
+`r'
+`M-x sepia-cpan-readme <RET> MODULE <RET>'
+     Fetch and display MODULE's README file.
+
+`d'
+`M-x sepia-cpan-doc <RET> MODULE <RET>'
+     Browse MODULE's documentation on `http://search.cpan.org'.
+
+`i'
+`M-x sepia-cpan-install <RET> MODULE <RET>'
+     Install MODULE and its prerequisites.  This feature is not yet
+     well tested.
+
+
+
+File: sepia.info,  Node: Customization,  Next: Internals,  Prev: CPAN browsing,  Up: Top
+
+5 Customization
+***************
+
+While Sepia can be customized in both the Perl and Emacs Lisp, most of
+the user-accessible configuration is in the latter.
+
+* Menu:
+
+* Emacs Variables::
+* Perl Variables::
+
+
+File: sepia.info,  Node: Emacs Variables,  Next: Perl Variables,  Prev: Customization,  Up: Customization
+
+5.1 Emacs Variables
+===================
+
+Since Sepia tries where possible to reuse existing Emacs functionality,
+its behavior should already be covered by existing customizations.  The
+two variables most likely to need customization are
+`sepia-program-name' and `sepia-perl5lib'.  General Sepia mode
+configuration can be done with `sepia-mode-hook', while REPL-specific
+configuration can be done with `sepia-repl-mode-hook'.
+
+`sepia-complete-methods'
+     If non-`nil', `sepia-complete-symbol' will complete simple method
+     calls of the form `$x->' or `Module->'.  Since the former requires
+     evaluation of `$x', this can be disabled.  Default: `T'.
+
+`sepia-eval-defun-include-decls'
+     If non-`nil', attempt to generate a declaration list for
+     `sepia-eval-defun'.  This is necessary when evaluating some code,
+     such as that calling functions without parentheses, because the
+     presence of declarations affects the parsing of barewords.
+     Default: `T'.
+
+`sepia-indent-expand-abbrev'
+     If non-`nil', `sepia-indent-or-complete' will, if reindentation
+     does not change the current line, expand an abbreviation before
+     point rather than performing completion.  Only if no abbreviation
+     is found will it perform completion.  Default: `T'.
+
+`sepia-module-list-function'
+     The function to view a tree of installed modules.  Default:
+     `w3m-find-file' if Emacs-w3m is installed, or
+     `browse-url-of-buffer' otherwise.
+
+`sepia-perldoc-function'
+     The function called to view installed modules' documentation.
+     Default: `w3m-perldoc' if Emacs-w3m is installed, or
+     `cperl-perldoc' otherwise.
+
+`sepia-perl5lib'
+     A list of directories to include in `PERL5LIB' when starting
+     interactive Perl.  Default: `nil'.
+
+`sepia-prefix-key'
+     The prefix to use for for functions in `sepia-keymap'.  Default:
+     <M-.>.
+
+`sepia-program-name'
+     The Perl program name for interactive Perl.  Default: "perl".
+
+`sepia-use-completion'
+     If non-`nil', various Sepia functions will generate completion
+     candidates from interactive Perl when called interactively.  This
+     may be slow or undesirable in some situations.  Default: `T'.
+
+`sepia-view-pod-function'
+     The function called to view the current buffer's documentation.
+     Default: `sepia-w3m-view-pod' if Emacs-w3m is available, or
+     `sepia-perldoc-buffer' otherwise.
+
+
+
+File: sepia.info,  Node: Perl Variables,  Prev: Emacs Variables,  Up: Customization
+
+5.2 Perl Variables
+==================
+
+When Sepia starts up, it evaluates the Perl script in `~/.sepiarc'.
+The following variables in the Sepia package control various aspects of
+interactive evaluation.
+
+`$PACKAGE'
+     The package in which user input is evaluated, determined
+     automatically when code is evaluated from a buffer.  Default:
+     `main'.
+
+`$PRINTER'
+     The function called to format interactive output, normally set
+     with the `printer' shortcut.
+
+`$PRINT_PRETTY'
+     If true, format some values nicely independent of the value of
+     `$PRINTER'.  Currently, this means columnating lists of simple
+     scalars.  Default: true.
+
+`$PS1'
+     The trailing end of the prompt string, which should end with "> ".
+     Default: `"> "'.
+
+`$STOPDIE'
+     If true, calls to `die' from interactive code will invoke the Sepia
+     debugger.  Default: true.
+
+`$STOPWARN'
+     If true, calls to `warn' from interactive code will invoke the
+     Sepia debugger.  Default: false.
+
+`$WANTARRAY'
+     If true, evaluate interactive expressions in list context.
+     Default: true.
+
+
+   Additional REPL shortcuts can be defined with
+`Sepia::define_shortcut'.  For example
+
+     Sepia::define_shortcut time => sub { print scalar localtime, "\n"; 0 },
+         'Display the current time.';
+
+   defines a shortcut "time" that displays the current time.  For
+details, see the code in `Sepia.pm'.
+
+
+File: sepia.info,  Node: Internals,  Next: Credits,  Prev: Customization,  Up: Top
+
+6 Internals
+***********
+
+Many things remain unexplained except by the code itself, and some
+details mentioned above should probably be given less prominence.  For
+developer documentation, please see the POD for `Sepia' and
+`Sepia::Xref', and the doc-strings in `sepia.el'.
+
+
+File: sepia.info,  Node: Credits,  Next: Function Index,  Prev: Internals,  Up: Top
+
+Credits
+*******
+
+Hilko Bengen
+     Found and motivated me to fix a bunch of bugs, created Debian
+     packages.
+
+Ævar Arnfjörð Bjarmason
+     Miscellaneous fixes.  Tested unicode support.
+
+Ye Wenbin
+     Found and fixed numerous bugs.
+
+Free Software
+     Portions of the code were lifted from Emacs-w3m, SLIME, ido, and
+     B::Xref, all of which are Free software.
+
+
+
+File: sepia.info,  Node: Function Index,  Prev: Credits,  Up: Top
+
+Function Index
+**************
+
+ [index ]
+* Menu:
+
+* sepia-apropos:                         Navigation.           (line 60)
+* sepia-callees:                         Navigation.           (line 68)
+* sepia-callers:                         Navigation.           (line 64)
+* sepia-complete-symbol:                 Completion.           (line 34)
+* sepia-cpan-doc:                        CPAN browsing.        (line 22)
+* sepia-cpan-install:                    CPAN browsing.        (line 26)
+* sepia-cpan-readme:                     CPAN browsing.        (line 18)
+* sepia-cpan-search:                     CPAN browsing.        (line 14)
+* sepia-defs:                            Navigation.           (line 52)
+* sepia-dwim:                            Navigation.           (line 20)
+* sepia-eval-defun:                      Evaluation.           (line 12)
+* sepia-eval-expression:                 Evaluation.           (line 23)
+* sepia-indent-or-complete:              Completion.           (line 40)
+* sepia-install-eldoc:                   Documentation.        (line 29)
+* sepia-jump-to-symbol:                  Navigation.           (line 36)
+* sepia-load-file:                       Evaluation.           (line 17)
+* sepia-location:                        Navigation.           (line 29)
+* sepia-mode:                            Editing.              (line  6)
+* sepia-module-find:                     Navigation.           (line 56)
+* sepia-module-list:                     Documentation.        (line 25)
+* sepia-next:                            Navigation.           (line 85)
+* sepia-package-list:                    Documentation.        (line 19)
+* sepia-perl-ne-region:                  Mutilation.           (line 17)
+* sepia-perl-pe-region:                  Mutilation.           (line 12)
+* sepia-perldoc-this:                    Documentation.        (line 12)
+* sepia-perlize-region:                  Mutilation.           (line 20)
+* sepia-rebuild:                         Navigation.           (line 89)
+* sepia-repl:                            Interactive Perl.     (line  6)
+* sepia-scratch:                         Scratchpad.           (line  6)
+* sepia-set-cwd:                         Evaluation.           (line 28)
+* sepia-var-defs:                        Navigation.           (line 76)
+* sepia-var-uses:                        Navigation.           (line 72)
+* sepia-view-pod:                        Documentation.        (line 16)
+
+
+
+Tag Table:
+Node: Top187
+Node: Introduction530
+Node: Getting Started951
+Node: Philosophy1576
+Node: Editing4582
+Node: Completion5044
+Node: Navigation6888
+Node: Documentation10237
+Node: Interactive Perl11784
+Node: Shortcuts12521
+Node: Debugger14722
+Node: Evaluation16381
+Node: Mutilation17357
+Node: Scratchpad18309
+Node: CPAN browsing18714
+Node: Customization19603
+Node: Emacs Variables19901
+Node: Perl Variables22396
+Node: Internals23883
+Node: Credits24243
+Node: Function Index24701
+
+End Tag Table
