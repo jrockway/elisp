@@ -37,16 +37,18 @@ again.  If that fails, well, you're fucked."
     (let ((tags-revert-without-query t))
       (visit-tags-table tags))
     
-    (ad-deactivate 'find-tag)
-    (condition-case nil
-        (find-tag tagname next-p regexp-p)
-      (error (message "Rebuilding tags table for %s" root)
-             (shell-command 
-              (format "find %s/lib | grep pm$ | etags - -o %s" root tags))
-             (let ((tags-revert-without-query t))
-               (visit-tags-table tags nil))
-             (find-tag tagname next-p regexp-p)))
-    (ad-activate 'find-tag)))
+    (unwind-protect 
+        (progn
+          (ad-deactivate 'find-tag)
+          (condition-case nil
+              (find-tag tagname next-p regexp-p)
+            (error (message "Rebuilding tags table for %s" root)
+                   (shell-command 
+                    (format "find %s/lib | grep pm$ | etags - -o %s" root tags))
+                   (let ((tags-revert-without-query t))
+                     (visit-tags-table tags nil))
+                   (find-tag tagname next-p regexp-p))))
+      (ad-activate 'find-tag))))
 
 (add-hook 'cperl-mode-hook 
           (lambda nil (local-set-key (kbd "M-.") 'cperl-project-find-tag)))
