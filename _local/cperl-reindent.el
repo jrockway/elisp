@@ -27,6 +27,12 @@
   "Narrow from the point to the nearest unmatched opening thingie"
   (interactive)
   (let ((start (+ 1 (look-for-opening-without-close))) (end (point)))
+    (save-excursion 
+      (goto-char start)
+      (when (looking-at "\n")
+        (next-line)
+        (beginning-of-line)
+        (setq start (point))))
     (narrow-to-region start end)))
 
 (defun cperl-reindent-eol nil
