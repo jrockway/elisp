@@ -38,3 +38,14 @@
    (split-window)
    (ansi-term (buffer-file-name)))
 
+(defun find-module ()
+  (interactive)
+  (let ((module (read-with-default "Module" (thing-at-point 'perl-module)
+                                   "You must specify a module!"))
+        (cperl-no-flymake t))
+    (find-file (with-temp-buffer
+                 (shell-command (format "/home/jon/perl/install/bin/perldoc -l %s" module) (current-buffer))
+                 (goto-char (point-min))
+                 (if (looking-at "\\(.+\\)")
+                     (match-string 0)
+                   (error "Could not read the module path!"))))))
