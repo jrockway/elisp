@@ -15,4 +15,13 @@
         do (bury-buffer buf)))
 (erc-go-away)
 
+(defun erc-next-channel nil
+  (interactive)
+  (let ((buffer (car erc-modified-channels-alist)))
+    (when (not buffer)
+      (error "No more buffers!"))
+    (switch-to-buffer (car buffer))))
+
+(global-set-key (kbd "<f12>") 'erc-next-channel)
+
 (provide 'erc-extras)
