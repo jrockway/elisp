@@ -21,11 +21,11 @@ list of (search . replacement) cons cells"
           (let* ((term (car terms))
                  (search (car term))
                  (replace (cdr term)))
-            (if (and (looking-at search) 
-                     (y-or-n-p (format "Replace match for '%s' with '%s'? "
-                                       search replace)))
-                     (progn (setq found t)
-                            (replace-match replace))))
+            (when (and (looking-at search) 
+                       (y-or-n-p (format "Replace match for '%s' with '%s'? "
+                                         search replace)))
+              (setq found t)
+              (replace-match replace)))
           (setq terms (cdr terms)))))))
 
 (defun multisearch ()
