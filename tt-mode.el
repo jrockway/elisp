@@ -65,24 +65,79 @@
                             "STOP" "CLEAR" "META" "TAGS"))
           "\\)\\b"))
 
+(defvar tt-start-tag "\\[%[+-]")
+(defvar tt-end-tag "[+-]%\\]")
+(defvar tt-body "\\(?:.+?\\|\n\\)+")
+
+(defun tt-find-full-expression
+  (re-search-forward
+   (format "\\(%s\\) \\(%s\\) \\(%s\\)" tt-start-tag tt-body tt-end-tag) nil t))
+
 (defvar tt-font-lock-keywords
-   (list
-    ;; Fontify [& ... &] expressions
-    '("\\(\\[%[-+]?\\)\\(.+?\\)\\([-+]?%\\]\\)"
-      (1 font-lock-string-face t)
-      (2 font-lock-variable-name-face t)
-      (3 font-lock-string-face t))
-    ;; Look for keywords within those expressions
-    (list (concat
-	   "\\[%[-+]? *\\("
-	   tt-keywords
-	   "\\)")
-	  1 font-lock-keyword-face t)
-    '("\\[% *\\(#.*?\\)%\\]"
-      (1 font-lock-comment-face t))
-    )
+  (list
+    ;; Fontify [% ... %] expressions
+   (list tt-find-full-expression
+         '(1 font-lock-string-face t)
+         '(2 font-lock-variable-name-face t)
+         '(3 font-lock-string-face t))
+   ;; Look for keywords within those expressions
+   (list (format "%s \\(%s\\) " tt-start-tag tt-keywords)
+         '(1 font-lock-keyword-face t))
+   '("\\[% *\\(#.*?\\)%\\]"
+     (1 font-lock-comment-face t)))
   "Expressions to font-lock in tt-mode.")
 
+(defun tt-tag-occurs (tag start end)
+  (let ((count 0))
+    (goto-char start)
+    (while (re-search-forward (regexp-quote tag) end t)
+      (incf count))
+    count))
+
+(defun tt-adjust-font-lock-region nil
+  ;(message "Adjusting region! %d %d" font-lock-beg font-lock-end)
+
+  (let (ret) 
+    (setq ret (catch :return 
+    ;; see if we are inside a [% ... %] with both tags outside of regio
+    (ignore-errors 
+      (let ((near-close (re-search-backward "%\\]" nil t))
+            (near-open  (re-search-backward "\\[%" nil t)))
+        (when (> near-open near-close) ; we see a %] ... [% we are inside [%
+          (setq font-lock-beg near-open)
+          (throw :return t)))
+      
+      (let ((near-close (re-search-forward "%\\]" nil t))
+            (near-open  (re-search-forward "\\[%" nil t)))
+        (when (< near-close near-open) ; we see a %] ... [% we are inside %]
+          (setq font-lock-end near-close)
+          (throw :return t))))
+    
+    ;; see if [% ... %] is unbalanced in the current region
+    (let ((opening (tt-tag-occurs "[%" font-lock-beg font-lock-end))
+          (closing (tt-tag-occurs "%]" font-lock-beg font-lock-end))
+          result)
+      (if (/= opening closing) (setq result t))
+      (cond
+       ((> opening closing) ; more opening tags, expand forwards
+        (setq font-lock-end 
+              (or (re-search-forward "%\\]" nil t) (point-max))))
+       ((< opening closing) ; more closing tags, expand backwards
+        (setq font-lock-beg
+              (or (re-search-backward "\\[%" nil t) (point-min)))))
+      (throw :return result))))
+    
+    (if ret
+        (message "font lock region expanded to -> %s"
+                 (let ((s (buffer-substring-no-properties font-lock-beg font-lock-end)))
+                   (while (string-match "\n" s) 
+                     (setq s (replace-match " [n] " nil nil s))) s))
+      (message "region not expanded furtuer"))
+    
+    ret))
+
+
+  
 (defun tt-mode ()
   "Major mode for editing Template Toolkit files"
   (interactive)
@@ -94,9 +149,8 @@
 	(make-local-variable 'font-lock-keywords)
 	(setq font-lock-keywords tt-font-lock-keywords))
     ;; Emacs
-    (make-local-variable 'font-lock-defaults)
     (setq font-lock-defaults '(tt-font-lock-keywords nil t))
-    )
+    (setq font-lock-extend-region-functions '(tt-adjust-font-lock-region)))
   (font-lock-mode)
   (run-mode-hooks 'tt-mode-hook))
 
