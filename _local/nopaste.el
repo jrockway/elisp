@@ -9,13 +9,16 @@
     (error "Not pasting modified buffer"))
   (let ((fn (or (buffer-file-name) (error "No buffer filename!"))))
     (setq last-nopaste-url
-          (with-temp-buffer
-            (shell-command (format "cat %s | /home/jon/utils/pbotutil.pl" fn) 
-                           (current-buffer))
-            (goto-char (point-min))
-            (if (looking-at ".+")
-                (match-string 0)
-              (error "No URL returned!")))))
+          (let ((old (getenv "NOPASTE_SERVICES")))
+            (protect-unwind (setenv "NOPASTE_SERVICES" old)
+                (setenv "NOPASTE_SERVICES" "Shadowcat")
+                (with-temp-buffer
+                  (shell-command (format "nopaste %s" fn) 
+                                 (current-buffer))
+                  (goto-char (point-min))
+                  (if (looking-at ".+")
+                      (match-string 0)
+                    (error "No URL returned!")))))))
   (message last-nopaste-url))
 
 (defun nopaste-yank-url ()
