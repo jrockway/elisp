@@ -22,7 +22,8 @@
   (let ((buffer (car erc-modified-channels-alist)))
     (when (not buffer)
       (error "No more buffers!"))
-    (switch-to-buffer (car buffer))))
+    (switch-to-buffer (car buffer))
+    (goto-char (point-max))))
 
 (global-set-key (kbd "<f12>") 'erc-next-channel)
 
