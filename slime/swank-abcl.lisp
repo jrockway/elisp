@@ -1,4 +1,4 @@
-;;;; -*- Mode: lisp; indent-tabs-mode: nil; outline-regexp: ";;;;;*"; -*-
+;;;; -*- indent-tabs-mode: nil; outline-regexp: ";;;;;*"; -*-
 ;;;
 ;;; swank-abcl.lisp --- Armedbear CL specific code for SLIME. 
 ;;;
@@ -9,7 +9,6 @@
 ;;;  
 
 (in-package :swank-backend)
-
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (require :collect) ;just so that it doesn't spoil the flying letters
@@ -35,17 +34,35 @@
 
 ;;; swank-mop
 
-;;dummies:
+;;dummies and definition
 
 (defclass standard-slot-definition ()())
 
-(defun class-finalized-p (class) t)
+;(defun class-finalized-p (class) t)
 
 (defun slot-definition-documentation (slot) #+nil (documentation slot 't))
 (defun slot-definition-type (slot) t)
 (defun class-prototype (class))
 (defun generic-function-declarations (gf))
-(defun specializer-direct-methods (spec) nil)
+(defun specializer-direct-methods (spec) (mop::class-direct-methods spec))
+
+(defun slot-definition-name (slot)
+  (mop::%slot-definition-name slot))
+
+(defun class-slots (class)
+  (mop::%class-slots class))
+
+(defun method-generic-function (method)
+  (mop::%method-generic-function method))
+
+(defun method-function (method)
+  (mop::%method-function method))
+
+(defun slot-boundp-using-class (class object slotdef)
+  (system::slot-boundp object (slot-definition-name slotdef)))
+
+(defun slot-value-using-class (class object slotdef)
+  (system::slot-value object (slot-definition-name slotdef)))
 
 (import-to-swank-mop
  '( ;; classes
@@ -60,12 +77,12 @@
    mop::class-direct-subclasses
    mop::class-direct-superclasses
    mop::eql-specializer
-   class-finalized-p ;;dummy
+   mop::class-finalized-p 
    cl:class-name
    mop::class-precedence-list
    class-prototype ;;dummy
-   mop::class-slots
-   specializer-direct-methods ;;dummy
+   class-slots
+   specializer-direct-methods 
    ;; eql-specializer accessors
    mop::eql-specializer-object
    ;; generic function readers
@@ -77,8 +94,8 @@
    mop::generic-function-method-combination
    mop::generic-function-name
    ;; method readers
-   mop::method-generic-function
-   mop::method-function
+   method-generic-function
+   method-function
    mop::method-lambda-list
    mop::method-specializers
    mop::method-qualifiers
@@ -88,10 +105,13 @@
    mop::slot-definition-initargs
    mop::slot-definition-initform
    mop::slot-definition-initfunction
-   mop::slot-definition-name
+   slot-definition-name
    slot-definition-type ;;dummy
    mop::slot-definition-readers
-   mop::slot-definition-writers))
+   mop::slot-definition-writers
+   slot-boundp-using-class
+   slot-value-using-class
+   ))
 
 ;;;; TCP Server
 
@@ -113,9 +133,8 @@
   (ext:server-socket-close socket))
 
 (defimplementation accept-connection (socket 
-                                      &key (external-format :iso-latin-1-unix) buffering timeout)
-  (declare (ignore buffering timeout))
-  (assert (eq external-format :iso-latin-1-unix))
+                                      &key external-format buffering timeout)
+  (declare (ignore buffering timeout external-format))
   (ext:get-socket-stream (ext:socket-accept socket)))
 
 ;;;; Unix signals
@@ -123,9 +142,38 @@
 (defimplementation call-without-interrupts (fn)
   (funcall fn))
 
-;;there are too many to count
 (defimplementation getpid ()
-  0)
+  (handler-case 
+      (let* ((runtime 
+              (java:jstatic "getRuntime" "java.lang.Runtime"))
+             (command
+              (java:jnew-array-from-array 
+               "java.lang.String" #("sh" "-c" "echo $PPID")))
+             (runtime-exec-jmethod 		
+              ;; Complicated because java.lang.Runtime.exec() is
+              ;; overloaded on a non-primitive type (array of
+              ;; java.lang.String), so we have to use the actual
+              ;; parameter instance to get java.lang.Class
+              (java:jmethod "java.lang.Runtime" "exec" 
+                            (java:jcall 
+                             (java:jmethod "java.lang.Object" "getClass")
+                             command)))
+             (process 
+              (java:jcall runtime-exec-jmethod runtime command))
+             (output 
+              (java:jcall (java:jmethod "java.lang.Process" "getInputStream")
+                          process)))
+         (java:jcall (java:jmethod "java.lang.Process" "waitFor")
+                     process)
+	 (loop :with b :do 
+	    (setq b 
+		  (java:jcall (java:jmethod "java.io.InputStream" "read")
+			      output))
+	    :until (member b '(-1 #x0a))	; Either EOF or LF
+	    :collecting (code-char b) :into result
+	    :finally (return 
+		       (parse-integer (coerce result 'string)))))
+    (t () 0))) 
 
 (defimplementation lisp-implementation-type-name ()
   "armedbear")
@@ -138,12 +186,11 @@
 
 ;;;; Misc
 
-
-(defimplementation arglist ((symbol t))
-  (multiple-value-bind (arglist present)
-      (sys::arglist symbol)
-    (if present arglist :not-available)))
-
+(defimplementation arglist (fun)
+  (cond ((symbolp fun)
+         (multiple-value-bind (arglist present) (sys::arglist fun)
+           (if present arglist :not-available)))
+        (t :not-available)))
 
 (defimplementation function-name (function)
   (nth-value 2 (function-lambda-expression function)))
@@ -256,46 +303,54 @@
 (defvar *buffer-string*)
 (defvar *compile-filename*)
 
-(defun handle-compiler-warning (condition)
-  #+nil
-  (let ((loc (getf (slot-value condition 'excl::plist) :loc)))
-    (signal (make-condition
-             'compiler-condition
-             :original-condition condition
-             :severity :warning
-             :message (format nil "~A" condition)
-             :location (cond (*buffer-name*
-                              (make-location 
-                               (list :buffer *buffer-name*)
-                               (list :position *buffer-start-position*)))
-                             (loc
-                              (destructuring-bind (file . pos) loc
-                                (make-location
-                                 (list :file (namestring (truename file)))
-                                 (list :position (1+ pos)))))
-                             (t  
-                              (make-location
-                               (list :file *compile-filename*)
-                               (list :position 1))))))))
+(in-package :swank-backend)
 
-(defimplementation swank-compile-file (filename load-p
-                                       &optional external-format)
+(defun handle-compiler-warning (condition)
+  (let ((loc nil));(getf (slot-value condition 'excl::plist) :loc)))
+    (unless (member condition *abcl-signaled-conditions*) ; filter condition signaled more than once.
+      (push condition *abcl-signaled-conditions*) 
+      (signal (make-condition
+               'compiler-condition
+               :original-condition condition
+               :severity :warning
+               :message (format nil "~A" condition)
+               :location (cond (*buffer-name*
+                                (make-location 
+                                 (list :buffer *buffer-name*)
+                                 (list :position *buffer-start-position*)))
+                               (loc
+                                (destructuring-bind (file . pos) loc
+                                  (make-location
+                                   (list :file (namestring (truename file)))
+                                   (list :position (1+ pos)))))
+                               (t  
+                                (make-location
+                                 (list :file *compile-filename*)
+                                 (list :position 1)))))))))
+
+(defvar *abcl-signaled-conditions*)
+
+(defimplementation swank-compile-file (filename load-p external-format)
   (declare (ignore external-format))
-  (handler-bind ((warning #'handle-compiler-warning))
-    (let ((*buffer-name* nil)
-          (*compile-filename* filename))
-      (multiple-value-bind (fn warn fail) (compile-file filename)
-        (when (and load-p (not fail))
-          (load fn))))))
+  (let ((jvm::*resignal-compiler-warnings* t)
+        (*abcl-signaled-conditions* nil))
+    (handler-bind ((warning #'handle-compiler-warning))
+      (let ((*buffer-name* nil)
+            (*compile-filename* filename))
+        (multiple-value-bind (fn warn fail) (compile-file filename)
+          (when (and load-p (not fail))
+            (load fn)))))))
 
 (defimplementation swank-compile-string (string &key buffer position directory)
   (declare (ignore directory))
-  (handler-bind ((warning #'handle-compiler-warning))
-    (let ((*buffer-name* buffer)
-          (*buffer-start-position* position)
-          (*buffer-string* string))
-      (funcall (compile nil (read-from-string
-                             (format nil "(~S () ~A)" 'lambda string)))))))
+  (let ((jvm::*resignal-compiler-warnings* t)
+        (*abcl-signaled-conditions* nil))
+    (handler-bind ((warning #'handle-compiler-warning))                 
+      (let ((*buffer-name* buffer)
+            (*buffer-start-position* position)
+            (*buffer-string* string))
+        (funcall (compile nil (read-from-string
+                               (format nil "(~S () ~A)" 'lambda string))))))))
 
 #|
 ;;;; Definition Finding
@@ -365,15 +420,7 @@ part of *sysdep-pathnames* in swank.loader.lisp.
 
 ;;;; Inspecting
 
-(defclass abcl-inspector (inspector)
-  ())
-
-(defimplementation make-default-inspector ()
-  (make-instance 'abcl-inspector))
-
-(defmethod inspect-for-emacs ((slot mop::slot-definition) (inspector abcl-inspector))
-  (declare (ignore inspector))
-  (values "A slot." 
+(defmethod emacs-inspect ((slot mop::slot-definition))
           `("Name: " (:value ,(mop::%slot-definition-name slot))
             (:newline)
             "Documentation:" (:newline)
@@ -385,11 +432,9 @@ part of *sysdep-pathnames* in swank.loader.lisp.
                              `(:value ,(mop::%slot-definition-initform slot))
                              "#<unspecified>") (:newline)
             "  Function: " (:value ,(mop::%slot-definition-initfunction slot))
-            (:newline))))
+            (:newline)))
 
-(defmethod inspect-for-emacs ((f function) (inspector abcl-inspector))
-  (declare (ignore inspector))
-  (values "A function."
+(defmethod emacs-inspect ((f function))
           `(,@(when (function-name f)
                     `("Name: " 
                       ,(princ-to-string (function-name f)) (:newline)))
@@ -401,19 +446,18 @@ part of *sysdep-pathnames* in swank.loader.lisp.
                          `("Documentation:" (:newline) ,(documentation f t) (:newline)))
             ,@(when (function-lambda-expression f)
                     `("Lambda expression:" 
-                      (:newline) ,(princ-to-string (function-lambda-expression f)) (:newline))))))
+                      (:newline) ,(princ-to-string (function-lambda-expression f)) (:newline)))))
 
 #|
 
-(defimplementation inspect-for-emacs ((o t) (inspector abcl-inspector))
+(defmethod emacs-inspect ((o t))
   (let* ((class (class-of o))
          (slots (mop::class-slots class)))
-    (values (format nil "~A~%   is a ~A" o class)
             (mapcar (lambda (slot)
                       (let ((name (mop::slot-definition-name slot)))
                         (cons (princ-to-string name)
                               (slot-value o name))))
-                    slots))))
+                    slots)))
 |#
 
 ;;;; Multithreading
@@ -506,3 +550,10 @@ part of *sysdep-pathnames* in swank.loader.lisp.
 (defimplementation quit-lisp ()
   (ext:exit))
 
+;; WORKAROUND: call/initialize accessors at load time
+(let ((c (make-condition 'compiler-condition 
+                          :original-condition nil
+                          :severity ':note :message "" :location nil))
+       (slots `(severity message short-message references location)))
+   (dolist (slot slots)
+     (funcall slot c)))

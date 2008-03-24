@@ -36,11 +36,10 @@
 (defimplementation close-socket (socket)
   (ext:close-socket (socket-fd socket)))
 
-(defimplementation accept-connection (socket &key 
-                                      (external-format :iso-latin-1-unix)
-                                      (buffering :full)
-                                      (timeout nil))
-  (let ((external-format (or external-format :iso-latin-1-unix))
+(defimplementation accept-connection (socket 
+                                      &key external-format buffering timeout)
+  (let ((external-format (or external-format :default))
+        (buffering (or buffering :full))
         (fd (socket-fd socket)))
       (loop
        (let ((ready (sys:wait-until-fd-usable fd :input timeout)))
@@ -54,7 +53,8 @@
   (check-type timeout (or null real))
   (if (fboundp 'ext::stream-timeout)
       (setf (ext::stream-timeout stream) timeout)
-      (setf (slot-value (slot-value stream 'cl::stream) 'cl::timeout) timeout)))
+      (setf (slot-value (slot-value stream 'lisp::stream) 'lisp::timeout)
+            timeout)))
 
 ;;;;; Sockets
 
@@ -69,23 +69,27 @@
   (let ((hostent (ext:lookup-host-entry hostname)))
     (car (ext:host-entry-addr-list hostent))))
 
-(defun find-external-format (coding-system)
-  (case coding-system
-    (:iso-latin-1-unix :iso-8859-1)
-    (:utf-8-unix :utf-8)
-    (:euc-jp-unix :euc-jp)
-    (t coding-system)))
+(defvar *external-format-to-coding-system*
+  '((:iso-8859-1 
+     "latin-1" "latin-1-unix" "iso-latin-1-unix" 
+     "iso-8859-1" "iso-8859-1-unix")
+    (:utf-8 "utf-8" "utf-8-unix")
+    (:euc-jp "euc-jp" "euc-jp-unix")))
+
+(defimplementation find-external-format (coding-system)
+  (car (rassoc-if (lambda (x) (member coding-system x :test #'equal))
+                  *external-format-to-coding-system*)))
 
 (defun make-socket-io-stream (fd external-format buffering)
   "Create a new input/output fd-stream for 'fd."
-  (let* ((external-format (find-external-format external-format))
-         (stream (sys:make-fd-stream fd :input t :output t
+  (let* ((stream (sys:make-fd-stream fd :input t :output t
                                      :element-type 'base-char
                                      :buffering buffering
                                      :external-format external-format)))
     ;; Ignore character conversion errors.  Without this the communication
     ;; channel is prone to lockup if a character conversion error occurs.
-    (setf (cl::stream-character-conversion-error-value stream) #\?)
+    (setf (lisp::character-conversion-stream-input-error-value stream) #\?)
+    (setf (lisp::character-conversion-stream-output-error-value stream) #\?)
     stream))
 
 
@@ -305,9 +309,11 @@
 ;;; usage this reduces consing.  As the string grows larger then grow to
 ;;; reduce the cost of copying strings around.
 ;;;
-(defmethod ext:stream-write-chars ((stream slime-output-stream) string start end)
+(defmethod ext:stream-write-chars ((stream slime-output-stream)
+                                   string start end waitp)
   (declare (simple-string string)
-	   (type kernel:index start end))
+	   (type kernel:index start end)
+           (ignore waitp))
   (declare (optimize (speed 3)))
   (unless (ext:stream-open-p stream)
     (error 'kernel:simple-stream-error
@@ -334,7 +340,7 @@
                   (let ((column (slot-value stream 'column)))
                     (declare (type kernel:index column))
                     (+ column (- end start))))))))
-  string)
+  (- end start))
 
 ;;;
 
@@ -373,21 +379,17 @@
                    (c::warning        #'handle-notification-condition))
       (funcall function))))
 
-(defimplementation swank-compile-file (filename load-p 
-                                       &optional external-format)
-  (let ((external-format (if external-format 
-                             (find-external-format external-format)
-                             :default)))
-    (with-compilation-hooks ()
-      (let ((*buffer-name* nil)
-            (ext:*ignore-extra-close-parentheses* nil))
-        (multiple-value-bind (output-file warnings-p failure-p)
-            (compile-file filename :external-format external-format)
-          (unless failure-p
-            ;; Cache the latest source file for definition-finding.
-            (source-cache-get filename (file-write-date filename))
-            (when load-p (load output-file)))
-          (values output-file warnings-p failure-p))))))
+(defimplementation swank-compile-file (filename load-p external-format)
+  (with-compilation-hooks ()
+    (let ((*buffer-name* nil)
+          (ext:*ignore-extra-close-parentheses* nil))
+      (multiple-value-bind (output-file warnings-p failure-p)
+          (compile-file filename :external-format external-format)
+        (unless failure-p
+          ;; Cache the latest source file for definition-finding.
+          (source-cache-get filename (file-write-date filename))
+          (when load-p (load output-file)))
+        (values output-file warnings-p failure-p)))))
 
 (defimplementation swank-compile-string (string &key buffer position directory)
   (declare (ignore directory))
@@ -1166,21 +1168,17 @@ Signal an error if no constructor can be found."
                              (list symbol))))
                  ((:defined)
                   (ext:info :alien-type :definition symbol))
-                 (:unknown
-                  (return-from describe-definition
-                    (format nil "Unknown alien type: ~S" symbol))))))))
+                 (:unknown :unknown))))))
 
 ;;;;; Argument lists
 
-(defimplementation arglist ((name symbol))
-  (cond ((and (symbolp name) (macro-function name))
-         (arglist (macro-function name)))
-        ((fboundp name)
-         (arglist (fdefinition name)))
-        (t
-         :not-available)))
+(defimplementation arglist (fun)
+  (etypecase fun
+    (function (function-arglist fun))
+    (symbol (function-arglist (or (macro-function fun)
+                                  (symbol-function fun))))))
 
-(defimplementation arglist ((fun function))
+(defun function-arglist (fun)
   (flet ((compiled-function-arglist (x)
            (let ((args (kernel:%function-arglist x)))
              (if args
@@ -1586,6 +1584,7 @@ Signal an error if no constructor can be found."
    (values  :initarg :values  :reader breakpoint.values))
   (:report (lambda (c stream) (princ (breakpoint.message c) stream))))
 
+#+nil
 (defimplementation condition-extras ((c breakpoint))
   ;; simply pop up the source buffer
   `((:short-frame-source 0)))
@@ -1694,12 +1693,6 @@ LRA  =  ~X~%" (mapcar #'fixnum
 
 ;;;; Inspecting
 
-(defclass scl-inspector (inspector)
-  ())
-
-(defimplementation make-default-inspector ()
-  (make-instance 'scl-inspector))
-
 (defconstant +lowtag-symbols+ 
   '(vm:even-fixnum-type
     vm:instance-pointer-type
@@ -1742,10 +1735,9 @@ The `symbol-value' of each element is a type tag.")
                                   :key #'symbol-value)))
           (format t ", type: ~A" type-symbol))))))
 
-(defimplementation inspect-for-emacs ((o t) (inspector scl-inspector))
+(defmethod emacs-inspect ((o t))
   (cond ((di::indirect-value-cell-p o)
-         (values (format nil "~A is a value cell." o)
-                 `("Value: " (:value ,(c:value-cell-ref o)))))
+                 `("Value: " (:value ,(c:value-cell-ref o))))
         ((alien::alien-value-p o)
          (inspect-alien-value o))
 	(t
@@ -1754,18 +1746,17 @@ The `symbol-value' of each element is a type tag.")
 (defun scl-inspect (o)
   (destructuring-bind (text labeledp . parts)
       (inspect::describe-parts o)
-    (values (format nil "~A~%" text)
+    (list*  (format nil "~A~%" text)
             (if labeledp
                 (loop for (label . value) in parts
                       append (label-value-line label value))
                 (loop for value in parts  for i from 0 
                       append (label-value-line i value))))))
 
-(defmethod inspect-for-emacs ((o function) (inspector scl-inspector))
-  (declare (ignore inspector))
+(defmethod emacs-inspect ((o function))
   (let ((header (kernel:get-type o)))
     (cond ((= header vm:function-header-type)
-           (values (format nil "~A is a function." o)
+           (list*  (format nil "~A is a function.~%" o)
                    (append (label-value-line*
                             ("Self" (kernel:%function-self o))
                             ("Next" (kernel:%function-next o))
@@ -1777,7 +1768,7 @@ The `symbol-value' of each element is a type tag.")
                             (with-output-to-string (s)
                               (disassem:disassemble-function o :stream s))))))
           ((= header vm:closure-header-type)
-           (values (format nil "~A is a closure" o)
+           (list* (format nil "~A is a closure.~%" o)
                    (append 
                     (label-value-line "Function" (kernel:%closure-function o))
                     `("Environment:" (:newline))
@@ -1791,9 +1782,7 @@ The `symbol-value' of each element is a type tag.")
            (call-next-method)))))
 
 
-(defmethod inspect-for-emacs ((o kernel:code-component) (_ scl-inspector))
-  (declare (ignore _))
-  (values (format nil "~A is a code data-block." o)
+(defmethod emacs-inspect ((o kernel:code-component))
           (append 
            (label-value-line* 
             ("code-size" (kernel:%code-code-size o))
@@ -1817,22 +1806,19 @@ The `symbol-value' of each element is a type tag.")
                              (* vm:code-constants-offset vm:word-bytes))
                           (ash 1 vm:lowtag-bits))
                          (ash (kernel:%code-code-size o) vm:word-shift)
-                         :stream s))))))))
+                         :stream s)))))))
 
-(defmethod inspect-for-emacs ((o kernel:fdefn) (inspector scl-inspector))
-  (declare (ignore inspector))
-  (values (format nil "~A is a fdenf object." o)
-          (label-value-line*
+(defmethod emacs-inspect ((o kernel:fdefn))
+  (label-value-line*
            ("name" (kernel:fdefn-name o))
            ("function" (kernel:fdefn-function o))
            ("raw-addr" (sys:sap-ref-32
                         (sys:int-sap (kernel:get-lisp-obj-address o))
-                        (* vm:fdefn-raw-addr-slot vm:word-bytes))))))
+                        (* vm:fdefn-raw-addr-slot vm:word-bytes)))))
 
-(defmethod inspect-for-emacs ((o array) (inspector scl-inspector))
-  inspector
+(defmethod emacs-inspect ((o array))
   (cond ((kernel:array-header-p o)
-         (values (format nil "~A is an array." o)
+         (list*  (format nil "~A is an array.~%" o)
                  (label-value-line*
                   (:header (describe-primitive-type o))
                   (:rank (array-rank o))
@@ -1844,14 +1830,13 @@ The `symbol-value' of each element is a type tag.")
                   (:displaced-p (kernel:%array-displaced-p o))
                   (:dimensions (array-dimensions o)))))
         (t
-         (values (format nil "~A is an simple-array." o)
+         (list*  (format nil "~A is an simple-array.~%" o)
                  (label-value-line*
                   (:header (describe-primitive-type o))
                   (:length (length o)))))))
 
-(defmethod inspect-for-emacs ((o simple-vector) (inspector scl-inspector))
-  inspector
-  (values (format nil "~A is a vector." o)
+(defmethod emacs-inspect ((o simple-vector))
+  (list*  (format nil "~A is a vector.~%" o)
           (append 
            (label-value-line*
             (:header (describe-primitive-type o))
@@ -1861,8 +1846,6 @@ The `symbol-value' of each element is a type tag.")
                    append (label-value-line i (aref o i)))))))
 
 (defun inspect-alien-record (alien)
-  (values
-   (format nil "~A is an alien value." alien)
    (with-struct (alien::alien-value- sap type) alien
      (with-struct (alien::alien-record-type- kind name fields) type
        (append
@@ -1872,16 +1855,14 @@ The `symbol-value' of each element is a type tag.")
          (:name name))
         (loop for field in fields 
               append (let ((slot (alien::alien-record-field-name field)))
-                       (label-value-line slot (alien:slot alien slot)))))))))
+                       (label-value-line slot (alien:slot alien slot))))))))
 
 (defun inspect-alien-pointer (alien)
-  (values
-   (format nil "~A is an alien value." alien)
-   (with-struct (alien::alien-value- sap type) alien
+  (with-struct (alien::alien-value- sap type) alien
      (label-value-line* 
       (:sap sap)
       (:type type)
-      (:to (alien::deref alien))))))
+      (:to (alien::deref alien)))))
   
 (defun inspect-alien-value (alien)
   (typecase (alien::alien-value-type alien)
@@ -1918,8 +1899,8 @@ The `symbol-value' of each element is a type tag.")
 
 ;;;; Multiprocessing
 
-(defimplementation spawn (fn &key (name "Anonymous"))
-  (thread:thread-create fn :name name))
+(defimplementation spawn (fn &key name)
+  (thread:thread-create fn :name (or name "Anonymous")))
 
 (defvar *thread-id-counter* 0)
 (defvar *thread-id-counter-lock* (thread:make-lock "Thread ID counter"))
@@ -1931,10 +1912,11 @@ The `symbol-value' of each element is a type tag.")
               (incf *thread-id-counter*)))))
 
 (defimplementation find-thread (id)
-  (thread:map-over-threads
-   #'(lambda (thread)
-       (when (eql (getf (thread:thread-plist thread) 'id) id)
-         (return-from find-thread thread)))))
+  (block find-thread
+    (thread:map-over-threads
+     #'(lambda (thread)
+         (when (eql (getf (thread:thread-plist thread) 'id) id)
+           (return-from find-thread thread))))))
 
 (defimplementation thread-name (thread)
   (princ-to-string (thread:thread-name thread)))

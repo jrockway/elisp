@@ -238,12 +238,9 @@
   (close socket))
 
 (defimplementation accept-connection (socket
-                                      &key (external-format :iso-latin-1-unix)
-				      buffering timeout)
-  (declare (ignore buffering timeout))
-  (ecase external-format
-    (:iso-latin-1-unix 
-     (sockets:make-socket-stream (sockets:accept-socket socket)))))
+				      &key external-format buffering timeout)
+  (declare (ignore buffering timeout external-format))
+  (sockets:make-socket-stream (sockets:accept-socket socket)))
 
 ;;; Misc
 
@@ -368,7 +365,7 @@
     (funcall fn)))
 
 (defimplementation swank-compile-file (*compile-filename* load-p
-				       &optional external-format)
+				       external-format)
   (declare (ignore external-format))
   (with-compilation-hooks ()
     (let ((*buffer-name* nil))
@@ -390,22 +387,13 @@
 ;; Hack to make swank.lisp load, at least
 (defclass file-stream ())
 
-(defclass corman-inspector (inspector)
-  ())
-
-(defimplementation make-default-inspector ()
-  (make-instance 'corman-inspector))
-
 (defun comma-separated (list &optional (callback (lambda (v)
                                                    `(:value ,v))))
   (butlast (loop for e in list
               collect (funcall callback e)
               collect ", ")))
 
-(defimplementation inspect-for-emacs ((class standard-class)
-                              (inspector corman-inspector))
-  (declare (ignore inspector))
-  (values "A class."
+(defmethod emacs-inspect ((class standard-class))
           `("Name: " (:value ,(class-name class))
             (:newline)
             "Super classes: "
@@ -439,13 +427,11 @@
                                          (lambda (class)
                                            `(:value ,class ,(princ-to-string (class-name class)))))
                   '("#<N/A (class not finalized)>"))
-            (:newline))))
+            (:newline)))
 
-(defimplementation inspect-for-emacs ((slot cons) (inspector corman-inspector))
+(defmethod emacs-inspect ((slot cons))
   ;; Inspects slot definitions
-  (declare (ignore corman-inspector))
   (if (eq (car slot) :name)
-      (values "A slot." 
               `("Name: " (:value ,(swank-mop:slot-definition-name slot))
                          (:newline)
                          ,@(when (swank-mop:slot-definition-documentation slot)
@@ -457,15 +443,14 @@
                                              `(:value ,(swank-mop:slot-definition-initform slot))
                                              "#<unspecified>") (:newline)
                                              "Init function: " (:value ,(swank-mop:slot-definition-initfunction slot))
-                                             (:newline)))
+                                             (:newline))
       (call-next-method)))
   
-(defimplementation inspect-for-emacs ((pathname pathnames::pathname-internal)
-                              inspector)
-  (declare (ignore inspector))
-  (values (if (wild-pathname-p pathname)
+(defmethod emacs-inspect ((pathname pathnames::pathname-internal))
+  (list*  (if (wild-pathname-p pathname)
               "A wild pathname."
               "A pathname.")
+	  '(:newline)
           (append (label-value-line*
                    ("Namestring" (namestring pathname))
                    ("Host"       (pathname-host pathname))
@@ -478,13 +463,11 @@
                               (not (probe-file pathname)))
                     (label-value-line "Truename" (truename pathname))))))
 
-(defimplementation inspect-for-emacs ((o t) (inspector corman-inspector))
+(defmethod emacs-inspect ((o t))
   (cond ((cl::structurep o) (inspect-structure o))
 	(t (call-next-method))))
 
 (defun inspect-structure (o)
-  (values 
-   (format nil "~A is a structure" o)
    (let* ((template (cl::uref o 1))
 	  (num-slots (cl::struct-template-num-slots template)))
      (cond ((symbolp template)
@@ -493,7 +476,7 @@
 	   (t
 	    (loop for i below num-slots
 		  append (label-value-line (elt template (+ 6 (* i 5)))
-					   (cl::uref o (+ 2 i)))))))))
+					   (cl::uref o (+ 2 i))))))))
 
 
 ;;; Threads

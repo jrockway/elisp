@@ -66,26 +66,36 @@
   (comm::close-socket (socket-fd socket)))
 
 (defimplementation accept-connection (socket 
-                                      &key (external-format :iso-latin-1-unix)
-                                      buffering timeout)
-  (declare (ignore buffering timeout))
-  (assert (eq external-format :iso-latin-1-unix))
+                                      &key external-format buffering timeout)
+  (declare (ignore buffering timeout external-format))
   (let* ((fd (comm::get-fd-from-socket socket)))
     (assert (/= fd -1))
     (make-instance 'comm:socket-stream :socket fd :direction :io 
                    :element-type 'base-char)))
-
-(defun find-external-format (coding-system &optional default)
-  (case coding-system
-    (:iso-latin-1-unix '(:latin-1 :eol-style :lf))
-    (:utf-8-unix '(:utf-8 :eol-style :lf))
-    (t default)))
 
 (defun set-sigint-handler ()
   ;; Set SIGINT handler on Swank request handler thread.
   #-win32
   (sys::set-signal-handler +sigint+ 
                            (make-sigint-handler mp:*current-process*)))
+
+;;; Coding Systems
+
+(defvar *external-format-to-coding-system*
+  '(((:latin-1 :eol-style :lf) 
+     "latin-1-unix" "iso-latin-1-unix" "iso-8859-1-unix")
+    ((:latin-1) 
+     "latin-1" "iso-latin-1" "iso-8859-1")
+    ((:utf-8) "utf-8")
+    ((:utf-8 :eol-style :lf) "utf-8-unix")
+    ((:euc-jp) "euc-jp")
+    ((:euc-jp :eol-style :lf) "euc-jp-unix")
+    ((:ascii) "us-ascii")
+    ((:ascii :eol-style :lf) "us-ascii-unix")))
+
+(defimplementation find-external-format (coding-system)
+  (car (rassoc-if (lambda (x) (member coding-system x :test #'equal))
+                  *external-format-to-coding-system*)))
 
 ;;; Unix signals
 
@@ -363,13 +373,9 @@ Return NIL if the symbol is unbound."
          (signal-error-data-base compiler::*error-database* ,location)
          (signal-undefined-functions compiler::*unknown-functions* ,location)))))
 
-(defimplementation swank-compile-file (filename load-p 
-                                       &optional external-format)
+(defimplementation swank-compile-file (filename load-p external-format)
   (with-swank-compilation-unit (filename)
-    (let ((ef (if external-format 
-                  (find-external-format external-format) 
-                  :default)))
-      (compile-file filename :load load-p :external-format ef))))
+    (compile-file filename :load load-p :external-format external-format)))
 
 (defvar *within-call-with-compilation-hooks* nil
   "Whether COMPILE-FILE was called from within CALL-WITH-COMPILATION-HOOKS.")
@@ -479,13 +485,17 @@ Return NIL if the symbol is unbound."
               (check-dspec form))))))
 
 (defun dspec-file-position (file dspec)
-  (with-open-file (stream file)
-    (let ((pos 
-           #-(or lispworks4.1 lispworks4.2)
-           (dspec-stream-position stream dspec)))
-      (if pos
-          (list :position (1+ pos) t)
-          (dspec-buffer-position dspec 1)))))
+  (let* ((*compile-file-pathname* (pathname file))
+         (*compile-file-truename* (truename *compile-file-pathname*))
+         (*load-pathname* *compile-file-pathname*)
+         (*load-truename* *compile-file-truename*))
+    (with-open-file (stream file)
+      (let ((pos 
+             #-(or lispworks4.1 lispworks4.2)
+             (dspec-stream-position stream dspec)))
+        (if pos
+            (list :position (1+ pos) t)
+            (dspec-buffer-position dspec 1))))))
 
 (defun emacs-buffer-location-p (location)
   (and (consp location)
@@ -532,22 +542,10 @@ Return NIL if the symbol is unbound."
 (defun unmangle-unfun (symbol)
   "Converts symbols like 'SETF::|\"CL-USER\" \"GET\"| to
 function names like \(SETF GET)."
-  (or (and (eq (symbol-package symbol)
-               (load-time-value (find-package :setf)))
-           (let ((slime-nregex::*regex-groupings* 0)
-                 (slime-nregex::*regex-groups* (make-array 10))
-                 (symbol-name (symbol-name symbol)))
-             (and (funcall (load-time-value
-                             (compile nil (slime-nregex:regex-compile "^\"(.+)\" \"(.+)\"$")))
-                           symbol-name)
-                  (list 'setf
-                        (intern (apply #'subseq symbol-name
-                                       (aref slime-nregex::*regex-groups* 2))
-                                (find-package
-                                 (apply #'subseq symbol-name
-                                        (aref slime-nregex::*regex-groups* 1))))))))
-      symbol))
-
+  (cond ((sys::setf-symbol-p symbol)
+         (sys::setf-pair-from-underlying-name symbol))
+        (t symbol)))
+                    
 (defun signal-undefined-functions (htab &optional filename)
   (maphash (lambda (unfun dspecs)
 	     (dolist (dspec dspecs)
@@ -626,36 +624,27 @@ function names like \(SETF GET)."
           append (frob-locs dspec (dspec:dspec-definition-locations dspec)))))
 
 ;;; Inspector
-(defclass lispworks-inspector (inspector)
-  ())
 
-(defimplementation make-default-inspector ()
-  (make-instance 'lispworks-inspector))
-
-(defimplementation inspect-for-emacs ((o t) (inspector lispworks-inspector))
-  (declare (ignore inspector))
+(defmethod emacs-inspect ((o t))
   (lispworks-inspect o))
 
-(defimplementation inspect-for-emacs ((o function) 
-                                      (inspector lispworks-inspector))
-  (declare (ignore inspector))
+(defmethod emacs-inspect ((o function))
   (lispworks-inspect o))
 
 ;; FIXME: slot-boundp-using-class in LW works with names so we can't
 ;; use our method in swank.lisp.
-(defimplementation inspect-for-emacs ((o standard-object) 
-                                      (inspector lispworks-inspector))
-  (declare (ignore inspector))
+(defmethod emacs-inspect ((o standard-object))
   (lispworks-inspect o))
 
 (defun lispworks-inspect (o)
   (multiple-value-bind (names values _getter _setter type)
       (lw:get-inspector-values o nil)
     (declare (ignore _getter _setter))
-    (values "A value."
             (append 
              (label-value-line "Type" type)
-             (mapcan #'label-value-line names values)))))
+             (loop for name in names
+                   for value in values
+                   append (label-value-line name value)))))
 
 ;;; Miscellaneous
 
@@ -685,8 +674,12 @@ function names like \(SETF GET)."
 
 ;;; Multithreading
 
-(defimplementation initialize-multiprocessing ()
-  (mp:initialize-multiprocessing))
+(defimplementation initialize-multiprocessing (continuation)
+  (cond ((not mp::*multiprocessing*)
+         (push (list "Initialize SLIME" '() continuation) 
+               mp:*initial-processes*)
+         (mp:initialize-multiprocessing))
+        (t (funcall continuation))))
 
 (defimplementation spawn (fn &key name)
   (let ((mp:*process-initial-bindings* 
@@ -778,3 +771,11 @@ function names like \(SETF GET)."
 (defmethod env-internals:confirm-p ((e slime-env) &optional msg &rest args)
   (apply (swank-sym :y-or-n-p-in-emacs) msg args))
       
+
+;;;; Weak hashtables
+
+(defimplementation make-weak-key-hash-table (&rest args)
+  (apply #'make-hash-table :weak-kind :key args))
+
+(defimplementation make-weak-value-hash-table (&rest args)
+  (apply #'make-hash-table :weak-kind :value args))

@@ -19,6 +19,7 @@
            #:short-message
            #:condition
            #:severity
+           #:with-compilation-hooks
            #:location
            #:location-p
            #:location-buffer
@@ -29,13 +30,13 @@
            #:quit-lisp
            #:references
            #:unbound-slot-filler
+           #:declaration-arglist
+           #:type-specifier-arglist
            ;; inspector related symbols
-           #:inspector
-           #:inspect-for-emacs
-           #:raw-inspection
-           #:fancy-inspection
+           #:emacs-inspect
            #:label-value-line
            #:label-value-line*
+           #:with-struct
            ))
 
 (defpackage :swank-mop
@@ -86,6 +87,7 @@
    #:slot-definition-writers
    #:slot-boundp-using-class
    #:slot-value-using-class
+   #:slot-makunbound-using-class
    ;; generic function protocol
    #:compute-applicable-methods-using-classes
    #:finalize-inheritance))
@@ -104,33 +106,64 @@ DEFINTERFACE adds to this list and DEFIMPLEMENTATION removes.")
 
 (defmacro definterface (name args documentation &rest default-body)
   "Define an interface function for the backend to implement.
-A generic function is defined with NAME, ARGS, and DOCUMENTATION.
+A function is defined with NAME, ARGS, and DOCUMENTATION.  This
+function first looks for a function to call in NAME's property list
+that is indicated by 'IMPLEMENTATION; failing that, it looks for a
+function indicated by 'DEFAULT. If neither is present, an error is
+signaled.
 
-If a DEFAULT-BODY is supplied then NO-APPLICABLE-METHOD is specialized
-to execute the body if the backend doesn't provide a specific
-implementation.
+If a DEFAULT-BODY is supplied, then a function with the same body and
+ARGS will be added to NAME's property list as the property indicated
+by 'DEFAULT.
 
 Backends implement these functions using DEFIMPLEMENTATION."
   (check-type documentation string "a documentation string")
-  (flet ((gen-default-impl ()
-           `(defmethod ,name ,args ,@default-body)))
-    `(progn (defgeneric ,name ,args (:documentation ,documentation))
-            (pushnew ',name *interface-functions*)
-            ,(if (null default-body)
-                 `(pushnew ',name *unimplemented-interfaces*)
-                 (gen-default-impl))
-            ;; see <http://www.franz.com/support/documentation/6.2/doc/pages/variables/compiler/s_cltl1-compile-file-toplevel-compatibility-p_s.htm>
-            (eval-when (:compile-toplevel :load-toplevel :execute)
-              (export ',name :swank-backend))
-            ',name)))
+  (assert (every #'symbolp args) ()
+          "Complex lambda-list not supported: ~S ~S" name args)
+  (labels ((gen-default-impl ()
+             `(setf (get ',name 'default) (lambda ,args ,@default-body)))
+           (args-as-list (args)
+             (destructuring-bind (req opt key rest) (parse-lambda-list args)
+               `(,@req ,@opt 
+                       ,@(loop for k in key append `(,(kw k) ,k)) 
+                       ,@(or rest '(())))))
+           (parse-lambda-list (args)
+             (parse args '(&optional &key &rest) 
+                    (make-array 4 :initial-element nil)))
+           (parse (args keywords vars)
+             (cond ((null args) 
+                    (reverse (map 'list #'reverse vars)))
+                   ((member (car args) keywords)
+                    (parse (cdr args) (cdr (member (car args) keywords)) vars))
+                   (t (push (car args) (aref vars (length keywords)))
+                      (parse (cdr args) keywords vars))))
+           (kw (s) (intern (string s) :keyword)))
+    `(progn 
+       (defun ,name ,args
+         ,documentation
+         (let ((f (or (get ',name 'implementation)
+                      (get ',name 'default))))
+           (cond (f (apply f ,@(args-as-list args)))
+                 (t (error "~S not implementated" ',name)))))
+       (pushnew ',name *interface-functions*)
+       ,(if (null default-body)
+            `(pushnew ',name *unimplemented-interfaces*)
+            (gen-default-impl))
+       ;; see <http://www.franz.com/support/documentation/6.2/doc/pages/variables/compiler/s_cltl1-compile-file-toplevel-compatibility-p_s.htm>
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+         (export ',name :swank-backend))
+       ',name)))
 
 (defmacro defimplementation (name args &body body)
-  `(progn (defmethod ,name ,args ,@body)
-          (if (member ',name *interface-functions*)
-              (setq *unimplemented-interfaces*
-                    (remove ',name *unimplemented-interfaces*))
-              (warn "DEFIMPLEMENTATION of undefined interface (~S)" ',name))
-          ',name))
+  (assert (every #'symbolp args) ()
+          "Complex lambda-list not supported: ~S ~S" name args)
+  `(progn
+     (setf (get ',name 'implementation) (lambda ,args ,@body))
+     (if (member ',name *interface-functions*)
+         (setq *unimplemented-interfaces*
+               (remove ',name *unimplemented-interfaces*))
+         (warn "DEFIMPLEMENTATION of undefined interface (~S)" ',name))
+     ',name))
 
 (defun warn-unimplemented-interfaces ()
   "Warn the user about unimplemented backend features.
@@ -313,23 +346,11 @@ If DIRECTORY is specified it may be used by certain implementations to
 rebind *DEFAULT-PATHNAME-DEFAULTS* which may improve the recording of
 source information.")
 
-(definterface operate-on-system (system-name operation-name &rest keyword-args)
-  "Perform OPERATION-NAME on SYSTEM-NAME using ASDF.
-The KEYWORD-ARGS are passed on to the operation.
-Example:
-\(operate-on-system \"SWANK\" \"COMPILE-OP\" :force t)"
-  (unless (member :asdf *features*)
-    (error "ASDF is not loaded."))
-  (with-compilation-hooks ()
-    (let ((operate (find-symbol (symbol-name '#:operate) :asdf))
-          (operation (find-symbol operation-name :asdf)))
-      (when (null operation)
-        (error "Couldn't find ASDF operation ~S" operation-name))
-      (apply operate operation system-name keyword-args))))
-
-(definterface swank-compile-file (filename load-p &optional external-format)
+(definterface swank-compile-file (filename load-p external-format)
    "Compile FILENAME signalling COMPILE-CONDITIONs.
-If LOAD-P is true, load the file after compilation.")
+If LOAD-P is true, load the file after compilation.
+EXTERNAL-FORMAT is a value returned by find-external-format or
+:default.")
 
 (deftype severity () 
   '(member :error :read-error :warning :style-warning :note))
@@ -361,6 +382,49 @@ If LOAD-P is true, load the file after compilation.")
    (location :initarg :location
              :accessor location)))
 
+(definterface find-external-format (coding-system)
+  "Return a \"external file format designator\" for CODING-SYSTEM.
+CODING-SYSTEM is Emacs-style coding system name (a string),
+e.g. \"latin-1-unix\"."
+  (if (equal coding-system "iso-latin-1-unix")
+      :default
+      nil))
+
+(definterface guess-external-format (filename)
+  "Detect the external format for the file with name FILENAME.
+Return nil if the file contains no special markers."
+  ;; Look for a Emacs-style -*- coding: ... -*- or Local Variable: section.
+  (with-open-file (s filename :if-does-not-exist nil
+                     :external-format (or (find-external-format "latin-1-unix")
+                                          :default))
+    (if s 
+        (or (let* ((line (read-line s nil))
+                   (p (search "-*-" line)))
+              (when p
+                (let* ((start (+ p (length "-*-")))
+                       (end (search "-*-" line :start2 start)))
+                  (when end
+                    (%search-coding line start end)))))
+            (let* ((len (file-length s))
+                   (buf (make-string (min len 3000))))
+              (file-position s (- len (length buf)))
+              (read-sequence buf s)
+              (let ((start (search "Local Variables:" buf :from-end t))
+                    (end (search "End:" buf :from-end t)))
+                (and start end (< start end)
+                     (%search-coding buf start end))))))))
+
+(defun %search-coding (str start end)
+  (let ((p (search "coding:" str :start2 start :end2 end)))
+    (when p
+      (incf p (length "coding:"))
+      (loop while (and (< p end)
+                       (member (aref str p) '(#\space #\tab)))
+            do (incf p))
+      (let ((end (position-if (lambda (c) (find c '(#\space #\tab #\newline)))
+                              str :start p)))
+        (find-external-format (subseq str p end))))))
+
 
 ;;;; Streams
 
@@ -391,10 +455,54 @@ like."
    "Return the lambda list for the symbol NAME. NAME can also be
 a lisp function object, on lisps which support this.
 
-The result can be a list or the :not-available if the arglist
-cannot be determined."
+The result can be a list or the :not-available keyword if the
+arglist cannot be determined."
    (declare (ignore name))
    :not-available)
+
+(defgeneric declaration-arglist (decl-identifier)
+  (:documentation
+   "Return the argument list of the declaration specifier belonging to the
+declaration identifier DECL-IDENTIFIER. If the arglist cannot be determined,
+the keyword :NOT-AVAILABLE is returned.
+
+The different SWANK backends can specialize this generic function to
+include implementation-dependend declaration specifiers, or to provide
+additional information on the specifiers defined in ANSI Common Lisp.")
+  (:method (decl-identifier)
+    (case decl-identifier
+      (dynamic-extent '(&rest vars))
+      (ignore         '(&rest vars))
+      (ignorable      '(&rest vars))
+      (special        '(&rest vars))
+      (inline         '(&rest function-names))
+      (notinline      '(&rest function-name))
+      (optimize       '(&any compilation-speed debug safety space speed))  
+      (type           '(type-specifier &rest args))
+      (ftype          '(type-specifier &rest function-names))
+      (otherwise
+       (flet ((typespec-p (symbol) (member :type (describe-symbol-for-emacs symbol))))
+         (cond ((and (symbolp decl-identifier) (typespec-p decl-identifier))
+                '(&rest vars))
+               ((and (listp decl-identifier) (typespec-p (first decl-identifier)))
+                '(&rest vars))
+               (t :not-available)))))))
+
+(defgeneric type-specifier-arglist (typespec-operator)
+  (:documentation
+   "Return the argument list of the type specifier belonging to
+TYPESPEC-OPERATOR.. If the arglist cannot be determined, the keyword
+:NOT-AVAILABLE is returned.
+
+The different SWANK backends can specialize this generic function to
+include implementation-dependend declaration specifiers, or to provide
+additional information on the specifiers defined in ANSI Common Lisp.")
+  (:method (typespec-operator)
+    (declare (special *type-specifier-arglists*)) ; defined at end of file.
+    (typecase typespec-operator
+      (symbol (or (cdr (assoc typespec-operator *type-specifier-arglists*))
+                  :not-available))
+      (t :not-available))))
 
 (definterface function-name (function)
   "Return the name of the function object FUNCTION.
@@ -510,6 +618,13 @@ returned.  Frame zero is defined as the frame which invoked the
 debugger.  If END is nil, return the frames from START to the end of
 the stack.")
 
+(definterface compute-sane-restarts (condition)
+  "This is an opportunity for Lisps such as CLISP to remove
+unwanted restarts from the output of CL:COMPUTE-RESTARTS,
+otherwise it should simply call CL:COMPUTE-RESTARTS, which is
+what the default implementation does."
+  (compute-restarts condition))
+
 (definterface print-frame (frame stream)
   "Print frame to stream.")
 
@@ -567,20 +682,12 @@ as it was called originally.")
   "Format a condition for display in SLDB."
   (princ-to-string condition))
 
-(definterface condition-references (condition)
-  "Return a list of documentation references for a condition.
-Each reference is one of:
-  (:ANSI-CL
-   {:FUNCTION | :SPECIAL-OPERATOR | :MACRO | :SECTION | :GLOSSARY }
-   symbol-or-name)
-  (:SBCL :NODE node-name)"
-  (declare (ignore condition))
-  '())
-
 (definterface condition-extras (condition)
   "Return a list of extra for the debugger.
 The allowed elements are of the form:
-  (:SHOW-FRAME-SOURCE frame-number)"
+  (:SHOW-FRAME-SOURCE frame-number)
+  (:REFERENCES &rest refs)
+"
   (declare (ignore condition))
   '())
 
@@ -593,6 +700,21 @@ The allowed elements are of the form:
 (definterface sldb-break-at-start (symbol)
   "Set a breakpoint on the beginning of the function for SYMBOL.")
   
+(definterface sldb-stepper-condition-p (condition)
+  "Return true if SLDB was invoked due to a single-stepping condition,
+false otherwise. "
+  (declare (ignore condition))
+  nil)
+
+(definterface sldb-step-into ()
+  "Step into the current single-stepper form.")
+
+(definterface sldb-step-next ()
+  "Step to the next form in the current function.")
+
+(definterface sldb-step-out ()
+  "Stop single-stepping temporarily, but resume it once the current function
+returns.")
 
 
 ;;;; Definition finding
@@ -623,10 +745,24 @@ definition, e.g., FOO or (METHOD FOO (STRING NUMBER)) or
 
 LOCATION is the source location for the definition.")
 
+(definterface find-source-location (object)
+  "Returns the source location of OBJECT, or NIL.
+
+That is the source location of the underlying datastructure of
+OBJECT. E.g. on a STANDARD-OBJECT, the source location of the
+respective DEFCLASS definition is returned, on a STRUCTURE-CLASS the
+respective DEFSTRUCT definition, and so on."
+  ;; This returns _ source location and not a list of locations. It's
+  ;; supposed to return the location of the DEFGENERIC definition on
+  ;; #'SOME-GENERIC-FUNCTION.
+  )
+
+
 (definterface buffer-first-change (filename)
   "Called for effect the first time FILENAME's buffer is modified."
   (declare (ignore filename))
   nil)
+
 
 
 ;;;; XREF
@@ -714,29 +850,11 @@ themselves, that is, their dispatch functions, are left alone.")
 
 ;;;; Inspector
 
-(defclass inspector ()
-  ()
-  (:documentation "Super class of inspector objects.
-
-Implementations should sub class in order to dispatch off of the
-inspect-for-emacs method."))
-
-(definterface make-default-inspector ()
-  "Return an inspector object suitable for passing to inspect-for-emacs.")
-
-(definterface inspect-for-emacs (object inspector)
+(defgeneric emacs-inspect (object)
+  (:documentation
    "Explain to Emacs how to inspect OBJECT.
 
-The argument INSPECTOR is an object representing how to get at
-the internals of OBJECT, it is usually an implementation specific
-class used simply for dispatching to the proper method.
-
-The orgument INSPECTION-MODE is an object specifying how, and
-what, to show to the user.
-
-Returns two values: a string which will be used as the title of
-the inspector buffer and a list specifying how to render the
-object for inspection.
+Returns a list specifying how to render the object for inspection.
 
 Every element of the list must be either a string, which will be
 inserted into the buffer as is, or a list of the form:
@@ -747,29 +865,29 @@ inserted into the buffer as is, or a list of the form:
 
  (:newline) - Render a \\n
 
- (:action label lambda) - Render LABEL (a text string) which when
- clicked will call LAMBDA.
+ (:action label lambda &key (refresh t)) - Render LABEL (a text
+ string) which when clicked will call LAMBDA. If REFRESH is
+ non-NIL the currently inspected object will be re-inspected
+ after calling the lambda.
+"))
 
- NIL - do nothing.")
-
-(defmethod inspect-for-emacs ((object t) (inspector t))
+(defmethod emacs-inspect ((object t))
   "Generic method for inspecting any kind of object.
 
 Since we don't know how to deal with OBJECT we simply dump the
 output of CL:DESCRIBE."
-  (declare (ignore inspector))
-  (values 
-   "A value."
    `("Type: " (:value ,(type-of object)) (:newline)
      "Don't know how to inspect the object, dumping output of CL:DESCRIBE:"
      (:newline) (:newline)
-     ,(with-output-to-string (desc) (describe object desc)))))
+     ,(with-output-to-string (desc) (describe object desc))))
 
 ;;; Utilities for inspector methods.
 ;;; 
-(defun label-value-line (label value)
-  "Create a control list which prints \"LABEL: VALUE\" in the inspector."
-  (list (princ-to-string label) ": " `(:value ,value) '(:newline)))
+(defun label-value-line (label value &key (newline t))
+  "Create a control list which prints \"LABEL: VALUE\" in the inspector.
+If NEWLINE is non-NIL a `(:newline)' is added to the result."
+  (list* (princ-to-string label) ": " `(:value ,value)
+         (if newline '((:newline)) nil)))
 
 (defmacro label-value-line* (&rest label-values)
   ` (append ,@(loop for (label value) in label-values
@@ -786,16 +904,11 @@ output of CL:DESCRIBE."
 ;;; The default implementations are sufficient for non-multiprocessing
 ;;; implementations.
 
-(definterface initialize-multiprocessing ()
-   "Initialize multiprocessing, if necessary."
-   nil)
+(definterface initialize-multiprocessing (continuation)
+   "Initialize multiprocessing, if necessary and then invoke CONTINUATION.
 
-(definterface startup-idle-and-top-level-loops ()
-  "This function is called directly through the listener, not in an RPC
-from Emacs. This is to support interfaces such as CMUCL's
-MP::STARTUP-IDLE-AND-TOP-LEVEL-LOOPS which does not return like a
-normal function."
-   nil)
+Depending on the impleimentaion, this function may never return."
+   (funcall continuation))
 
 (definterface spawn (fn &key name)
   "Create a new thread to call FN.")
@@ -899,3 +1012,54 @@ SPEC can be:
 (definterface make-weak-value-hash-table (&rest args)
   "Like MAKE-HASH-TABLE, but weak w.r.t. the values."
   (apply #'make-hash-table args))
+
+(definterface hash-table-weakness (hashtable)
+  "Return nil or one of :key :value :key-or-value :key-and-value"
+  (declare (ignore hashtable))
+  nil)
+
+
+;;;; Character names
+
+(definterface character-completion-set (prefix matchp)
+  "Return a list of names of characters that match PREFIX."
+  ;; Handle the standard and semi-standard characters.
+  (loop for name in '("Newline" "Space" "Tab" "Page" "Rubout"
+                      "Linefeed" "Return" "Backspace")
+     when (funcall matchp prefix name)
+     collect name))
+
+
+(defparameter *type-specifier-arglists*
+  '((and                . (&rest type-specifiers))
+    (array              . (&optional element-type dimension-spec))
+    (base-string        . (&optional size))
+    (bit-vector         . (&optional size))
+    (complex            . (&optional type-specifier))
+    (cons               . (&optional car-typespec cdr-typespec))
+    (double-float       . (&optional lower-limit upper-limit))
+    (eql                . (object))
+    (float              . (&optional lower-limit upper-limit))
+    (function           . (&optional arg-typespec value-typespec))
+    (integer            . (&optional lower-limit upper-limit))
+    (long-float         . (&optional lower-limit upper-limit))
+    (member             . (&rest eql-objects))
+    (mod                . (n))
+    (not                . (type-specifier))
+    (or                 . (&rest type-specifiers))
+    (rational           . (&optional lower-limit upper-limit))
+    (real               . (&optional lower-limit upper-limit))
+    (satisfies          . (predicate-symbol))
+    (short-float        . (&optional lower-limit upper-limit))
+    (signed-byte        . (&optional size))
+    (simple-array       . (&optional element-type dimension-spec))
+    (simple-base-string . (&optional size))
+    (simple-bit-vector  . (&optional size))
+    (simple-string      . (&optional size))
+    (single-float       . (&optional lower-limit upper-limit))
+    (simple-vector      . (&optional size))
+    (string             . (&optional size))
+    (unsigned-byte      . (&optional size))
+    (values             . (&rest typespecs))
+    (vector             . (&optional element-type size))
+    ))

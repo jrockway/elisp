@@ -76,7 +76,7 @@
 (defimplementation preferred-communication-style ()
   :sigio)
 
-#-(or ppc mips)
+#-(or darwin mips)
 (defimplementation create-socket (host port)
   (let* ((addr (resolve-hostname host))
          (addr (if (not (find-symbol "SOCKET-ERROR" :ext))
@@ -85,7 +85,7 @@
     (ext:create-inet-listener port :stream :reuse-address t :host addr)))
 
 ;; There seems to be a bug in create-inet-listener on Mac/OSX and Irix.
-#+(or ppc mips)
+#+(or darwin mips)
 (defimplementation create-socket (host port)
   (declare (ignore host))
   (ext:create-inet-listener port :stream :reuse-address t))
@@ -98,16 +98,11 @@
     (sys:invalidate-descriptor fd) 
     (ext:close-socket fd)))
 
-(defimplementation accept-connection (socket &key 
-                                      (external-format :iso-latin-1-unix)
-                                      (buffering :full)
-                                      timeout)
-  (declare (ignore timeout))
-  (unless (eq external-format ':iso-latin-1-unix)
-    (remove-fd-handlers socket)
-    (remove-sigio-handlers socket)
-    (assert (eq external-format ':iso-latin-1-unix)))
-  (make-socket-io-stream (ext:accept-tcp-connection socket) buffering))
+(defimplementation accept-connection (socket &key
+                                      external-format buffering timeout)
+  (declare (ignore timeout external-format))
+  (let ((buffering (or buffering :full)))
+    (make-socket-io-stream (ext:accept-tcp-connection socket) buffering)))
 
 ;;;;; Sockets
 
@@ -338,8 +333,7 @@ NIL if we aren't compiling from a buffer.")
                    (c::warning        #'handle-notification-condition))
       (funcall function))))
 
-(defimplementation swank-compile-file (filename load-p 
-                                       &optional external-format)
+(defimplementation swank-compile-file (filename load-p external-format)
   (declare (ignore external-format))
   (clear-xref-info filename)
   (with-compilation-hooks ()
@@ -703,7 +697,11 @@ condition object."
     (if *debug-definition-finding*
         (body)
         (handler-case (values (progn ,@body) nil)
-          (error (c) (values (list :error (princ-to-string c)) c))))))
+          (error (c) (values `(:error ,(trim-whitespace (princ-to-string c)))
+                             c))))))
+
+(defun trim-whitespace (string)
+  (string-trim #(#\newline #\space #\tab) string))
 
 (defun code-location-source-location (code-location)
   "Safe wrapper around `code-location-from-source-location'."
@@ -913,16 +911,17 @@ NAME can any valid function name (e.g, (setf car))."
 	   (vm::find-code-object function))
        (not (eq closure function))))
 
-
-(defun byte-function-location (fn)
-  "Return the location of the byte-compiled function FN."
-  (etypecase fn
+(defun byte-function-location (fun)
+  "Return the location of the byte-compiled function FUN."
+  (etypecase fun
     ((or c::hairy-byte-function c::simple-byte-function)
-     (let* ((component (c::byte-function-component fn))
-            (debug-info (kernel:%code-debug-info component)))
-       (debug-info-function-name-location debug-info)))
+     (let* ((di (kernel:%code-debug-info (c::byte-function-component fun))))
+       (if di 
+           (debug-info-function-name-location di)
+           `(:error 
+             ,(format nil "Byte-function without debug-info: ~a" fun)))))
     (c::byte-closure
-     (byte-function-location (c::byte-closure-function fn)))))
+     (byte-function-location (c::byte-closure-function fun)))))
 
 ;;; Here we deal with structure accessors. Note that `dd' is a
 ;;; "defstruct descriptor" structure in CMUCL. A `dd' describes a
@@ -1143,7 +1142,10 @@ Signal an error if no constructor can be found."
 
 (defun setf-definitions (name)
   (let ((function (or (ext:info :setf :inverse name)
-                      (ext:info :setf :expander name))))
+                      (ext:info :setf :expander name)
+                      (and (symbolp name)
+                           (fboundp `(setf ,name))
+                           (fdefinition `(setf ,name))))))
     (if function
         (list (list `(setf ,name) 
                     (function-location (coerce function 'function)))))))
@@ -1276,18 +1278,15 @@ Signal an error if no constructor can be found."
                              (list symbol))))
                  ((:defined)
                   (ext:info :alien-type :definition symbol))
-                 (:unknown
-                  (return-from describe-definition
-                    (format nil "Unknown alien type: ~S" symbol))))))))
+                 (:unknown :unkown))))))
 
 ;;;;; Argument lists
 
-(defimplementation arglist ((name symbol))
-  (arglist (or (macro-function name)
-               (symbol-function name))))
-
-(defimplementation arglist ((fun function))
-  (function-arglist fun))
+(defimplementation arglist (fun)
+  (etypecase fun
+    (function (function-arglist fun))
+    (symbol (function-arglist (or (macro-function fun)
+                                  (symbol-function fun))))))
 
 (defun function-arglist (fun)
   (let ((arglist
@@ -1478,7 +1477,12 @@ A utility for debugging DEBUG-FUNCTION-ARGLIST."
                       (error (make-condition
                               'sldb-condition
                               :original-condition condition)))))
-      (funcall debugger-loop-fn))))
+      (unwind-protect
+           (progn
+             #+(or)(sys:scrub-control-stack)
+             (funcall debugger-loop-fn))
+        #+(or)(sys:scrub-control-stack)
+        ))))
 
 (defun frame-down (frame)
   (handler-case (di:frame-down frame)
@@ -1708,9 +1712,12 @@ A utility for debugging DEBUG-FUNCTION-ARGLIST."
    (values  :initarg :values  :reader breakpoint.values))
   (:report (lambda (c stream) (princ (breakpoint.message c) stream))))
 
-(defimplementation condition-extras ((c breakpoint))
-  ;; simply pop up the source buffer
-  `((:short-frame-source 0)))
+(defimplementation condition-extras (condition)
+  (typecase condition
+    (breakpoint 
+     ;; pop up the source buffer
+     `((:show-frame-source 0))) 
+    (t '())))
 
 (defun signal-breakpoint (breakpoint frame)
   "Signal a breakpoint condition for BREAKPOINT in FRAME.
@@ -1815,12 +1822,6 @@ LRA  =  ~X~%" (mapcar #'fixnum
 
 ;;;; Inspecting
 
-(defclass cmucl-inspector (inspector)
-  ())
-
-(defimplementation make-default-inspector ()
-  (make-instance 'cmucl-inspector))
-
 (defconstant +lowtag-symbols+ 
   '(vm:even-fixnum-type
     vm:function-pointer-type
@@ -1863,10 +1864,9 @@ The `symbol-value' of each element is a type tag.")
                                   :key #'symbol-value)))
           (format t ", type: ~A" type-symbol))))))
 
-(defimplementation inspect-for-emacs ((o t) (inspector cmucl-inspector))
+(defmethod emacs-inspect ((o t))
   (cond ((di::indirect-value-cell-p o)
-         (values (format nil "~A is a value cell." o)
-                 `("Value: " (:value ,(c:value-cell-ref o)))))
+         `("Value: " (:value ,(c:value-cell-ref o))))
         ((alien::alien-value-p o)
          (inspect-alien-value o))
 	(t
@@ -1874,67 +1874,59 @@ The `symbol-value' of each element is a type tag.")
 
 (defun cmucl-inspect (o)
   (destructuring-bind (text labeledp . parts) (inspect::describe-parts o)
-    (values (format nil "~A~%" text)
-            (if labeledp
-                (loop for (label . value) in parts
-                      append (label-value-line label value))
-                (loop for value in parts  for i from 0 
-                      append (label-value-line i value))))))
+    (list* (format nil "~A~%" text)
+           (if labeledp
+               (loop for (label . value) in parts
+                     append (label-value-line label value))
+               (loop for value in parts  for i from 0 
+                     append (label-value-line i value))))))
 
-(defmethod inspect-for-emacs ((o function) (inspector cmucl-inspector))
-  (declare (ignore inspector))
+(defmethod emacs-inspect ((o function))
   (let ((header (kernel:get-type o)))
     (cond ((= header vm:function-header-type)
-           (values (format nil "~A is a function." o)
-                   (append (label-value-line*
-                            ("Self" (kernel:%function-self o))
-                            ("Next" (kernel:%function-next o))
-                            ("Name" (kernel:%function-name o))
-                            ("Arglist" (kernel:%function-arglist o))
-                            ("Type" (kernel:%function-type o))
-                            ("Code" (kernel:function-code-header o)))
-                           (list 
-                            (with-output-to-string (s)
-                              (disassem:disassemble-function o :stream s))))))
+           (append (label-value-line*
+                    ("Self" (kernel:%function-self o))
+                    ("Next" (kernel:%function-next o))
+                    ("Name" (kernel:%function-name o))
+                    ("Arglist" (kernel:%function-arglist o))
+                    ("Type" (kernel:%function-type o))
+                    ("Code" (kernel:function-code-header o)))
+                   (list 
+                    (with-output-to-string (s)
+                      (disassem:disassemble-function o :stream s)))))
           ((= header vm:closure-header-type)
-           (values (format nil "~A is a closure" o)
-                   (append 
-                    (label-value-line "Function" (kernel:%closure-function o))
-                    `("Environment:" (:newline))
-                    (loop for i from 0 below (1- (kernel:get-closure-length o))
-                          append (label-value-line 
-                                  i (kernel:%closure-index-ref o i))))))
+           (list* (format nil "~A is a closure.~%" o)
+                  (append 
+                   (label-value-line "Function" (kernel:%closure-function o))
+                   `("Environment:" (:newline))
+                   (loop for i from 0 below (1- (kernel:get-closure-length o))
+                         append (label-value-line 
+                                 i (kernel:%closure-index-ref o i))))))
           ((eval::interpreted-function-p o)
            (cmucl-inspect o))
           (t
            (call-next-method)))))
 
-(defmethod inspect-for-emacs ((o kernel:funcallable-instance)
-                              (i cmucl-inspector))
-  (declare (ignore i))
-  (values 
-   (format nil "~A is a funcallable-instance." o)
-   (append (label-value-line* 
-            (:function (kernel:%funcallable-instance-function o))
-            (:lexenv  (kernel:%funcallable-instance-lexenv o))
-            (:layout  (kernel:%funcallable-instance-layout o)))
-           (nth-value 1 (cmucl-inspect o)))))
+(defmethod emacs-inspect ((o kernel:funcallable-instance))
+  (append (label-value-line* 
+           (:function (kernel:%funcallable-instance-function o))
+           (:lexenv  (kernel:%funcallable-instance-lexenv o))
+           (:layout  (kernel:%funcallable-instance-layout o)))
+          (cmucl-inspect o)))
 
-(defmethod inspect-for-emacs ((o kernel:code-component) (_ cmucl-inspector))
-  (declare (ignore _))
-  (values (format nil "~A is a code data-block." o)
-          (append 
-           (label-value-line* 
-            ("code-size" (kernel:%code-code-size o))
-            ("entry-points" (kernel:%code-entry-points o))
-            ("debug-info" (kernel:%code-debug-info o))
-            ("trace-table-offset" (kernel:code-header-ref 
-                                   o vm:code-trace-table-offset-slot)))
-           `("Constants:" (:newline))
-           (loop for i from vm:code-constants-offset 
-                 below (kernel:get-header-data o)
-                 append (label-value-line i (kernel:code-header-ref o i)))
-           `("Code:" (:newline)
+(defmethod emacs-inspect ((o kernel:code-component))
+  (append 
+   (label-value-line* 
+    ("code-size" (kernel:%code-code-size o))
+    ("entry-points" (kernel:%code-entry-points o))
+    ("debug-info" (kernel:%code-debug-info o))
+    ("trace-table-offset" (kernel:code-header-ref 
+                           o vm:code-trace-table-offset-slot)))
+   `("Constants:" (:newline))
+   (loop for i from vm:code-constants-offset 
+         below (kernel:get-header-data o)
+         append (label-value-line i (kernel:code-header-ref o i)))
+   `("Code:" (:newline)
              , (with-output-to-string (s)
                  (cond ((kernel:%code-debug-info o)
                         (disassem:disassemble-code-component o :stream s))
@@ -1946,64 +1938,57 @@ The `symbol-value' of each element is a type tag.")
                              (* vm:code-constants-offset vm:word-bytes))
                           (ash 1 vm:lowtag-bits))
                          (ash (kernel:%code-code-size o) vm:word-shift)
-                         :stream s))))))))
+                         :stream s)))))))
 
-(defmethod inspect-for-emacs ((o kernel:fdefn) (inspector cmucl-inspector))
-  (declare (ignore inspector))
-  (values (format nil "~A is a fdenf object." o)
-          (label-value-line*
-           ("name" (kernel:fdefn-name o))
-           ("function" (kernel:fdefn-function o))
-           ("raw-addr" (sys:sap-ref-32
-                        (sys:int-sap (kernel:get-lisp-obj-address o))
-                        (* vm:fdefn-raw-addr-slot vm:word-bytes))))))
+(defmethod emacs-inspect ((o kernel:fdefn))
+  (label-value-line*
+   ("name" (kernel:fdefn-name o))
+   ("function" (kernel:fdefn-function o))
+   ("raw-addr" (sys:sap-ref-32
+                (sys:int-sap (kernel:get-lisp-obj-address o))
+                (* vm:fdefn-raw-addr-slot vm:word-bytes)))))
 
-(defmethod inspect-for-emacs ((o array) (inspector cmucl-inspector))
-  inspector
-  (values (format nil "~A is an array." o)
-          (label-value-line*
-           (:header (describe-primitive-type o))
-           (:rank (array-rank o))
-           (:fill-pointer (kernel:%array-fill-pointer o))
-           (:fill-pointer-p (kernel:%array-fill-pointer-p o))
-           (:elements (kernel:%array-available-elements o))           
-           (:data (kernel:%array-data-vector o))
-           (:displacement (kernel:%array-displacement o))
-           (:displaced-p (kernel:%array-displaced-p o))
-           (:dimensions (array-dimensions o)))))
+#+(or)
+(defmethod emacs-inspect ((o array))
+  (if (typep o 'simple-array)
+      (call-next-method)
+      (label-value-line*
+       (:header (describe-primitive-type o))
+       (:rank (array-rank o))
+       (:fill-pointer (kernel:%array-fill-pointer o))
+       (:fill-pointer-p (kernel:%array-fill-pointer-p o))
+       (:elements (kernel:%array-available-elements o))           
+       (:data (kernel:%array-data-vector o))
+       (:displacement (kernel:%array-displacement o))
+       (:displaced-p (kernel:%array-displaced-p o))
+       (:dimensions (array-dimensions o)))))
 
-(defmethod inspect-for-emacs ((o simple-vector) (inspector cmucl-inspector))
-  inspector
-  (values (format nil "~A is a vector." o)
-          (append 
-           (label-value-line*
-            (:header (describe-primitive-type o))
-            (:length (c::vector-length o)))
-           (loop for i below (length o)
-                 append (label-value-line i (aref o i))))))
+(defmethod emacs-inspect ((o simple-vector))
+  (append 
+   (label-value-line*
+    (:header (describe-primitive-type o))
+    (:length (c::vector-length o)))
+   (loop for i below (length o)
+         append (label-value-line i (aref o i)))))
 
 (defun inspect-alien-record (alien)
-  (values
-   (format nil "~A is an alien value." alien)
-   (with-struct (alien::alien-value- sap type) alien
-     (with-struct (alien::alien-record-type- kind name fields) type
-       (append
-        (label-value-line*
-         (:sap sap)
-         (:kind kind)
-         (:name name))
-        (loop for field in fields 
-              append (let ((slot (alien::alien-record-field-name field)))
-                       (label-value-line slot (alien:slot alien slot)))))))))
+  (with-struct (alien::alien-value- sap type) alien
+    (with-struct (alien::alien-record-type- kind name fields) type
+      (append
+       (label-value-line*
+        (:sap sap)
+        (:kind kind)
+        (:name name))
+       (loop for field in fields 
+             append (let ((slot (alien::alien-record-field-name field)))
+                      (label-value-line slot (alien:slot alien slot))))))))
 
 (defun inspect-alien-pointer (alien)
-  (values
-   (format nil "~A is an alien value." alien)
-   (with-struct (alien::alien-value- sap type) alien
-     (label-value-line* 
-      (:sap sap)
-      (:type type)
-      (:to (alien::deref alien))))))
+  (with-struct (alien::alien-value- sap type) alien
+    (label-value-line* 
+     (:sap sap)
+     (:type type)
+     (:to (alien::deref alien)))))
   
 (defun inspect-alien-value (alien)
   (typecase (alien::alien-value-type alien)
@@ -2042,16 +2027,16 @@ The `symbol-value' of each element is a type tag.")
 
 #+mp
 (progn
-  (defimplementation initialize-multiprocessing () 
-    (mp::init-multi-processing))
-  
-  (defimplementation startup-idle-and-top-level-loops ()
+  (defimplementation initialize-multiprocessing (continuation) 
+    (mp::init-multi-processing)
+    (mp:make-process continuation :name "swank")
     ;; Threads magic: this never returns! But top-level becomes
     ;; available again.
-    (mp::startup-idle-and-top-level-loops))
-
-  (defimplementation spawn (fn &key (name "Anonymous"))
-    (mp:make-process fn :name name))
+    (unless mp::*idle-process*
+      (mp::startup-idle-and-top-level-loops)))
+  
+  (defimplementation spawn (fn &key name)
+    (mp:make-process fn :name (or name "Anonymous")))
 
   (defvar *thread-id-counter* 0)
 
@@ -2174,8 +2159,8 @@ The `symbol-value' of each element is a type tag.")
   (setq ext:*gc-notify-after* #'post-gc-hook))
 
 (defun remove-gc-hooks ()
-  (setq ext:*gc-notify-before* nil)
-  (setq ext:*gc-notify-after* nil))
+  (setq ext:*gc-notify-before* #'lisp::default-gc-notify-before)
+  (setq ext:*gc-notify-after* #'lisp::default-gc-notify-after))
 
 (defvar *install-gc-hooks* t
   "If non-nil install GC hooks")
@@ -2221,7 +2206,10 @@ The `symbol-value' of each element is a type tag.")
     ((:call)
      (destructuring-bind (caller callee) (cdr spec)
        (toggle-trace-aux (process-fspec callee) 
-                         :wherein (list (process-fspec caller)))))))
+                         :wherein (list (process-fspec caller)))))
+    ;; doesn't work properly
+    ;; ((:labels :flet) (toggle-trace-aux (process-fspec spec)))
+    ))
 
 (defun process-fspec (fspec)
   (cond ((consp fspec)
@@ -2229,9 +2217,8 @@ The `symbol-value' of each element is a type tag.")
            ((:defun :defgeneric) (second fspec))
            ((:defmethod) 
             `(method ,(second fspec) ,@(third fspec) ,(fourth fspec)))
-           ;; this isn't actually supported
-           ((:labels) `(labels ,(process-fspec (second fspec)) ,(third fspec)))
-           ((:flet) `(flet ,(process-fspec (second fspec)) ,(third fspec)))))
+           ((:labels) `(labels ,(third fspec) ,(process-fspec (second fspec))))
+           ((:flet) `(flet ,(third fspec) ,(process-fspec (second fspec))))))
         (t
          fspec)))
 
