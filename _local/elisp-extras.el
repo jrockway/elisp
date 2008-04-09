@@ -11,5 +11,9 @@
            (lambda ()
              (local-set-key "\C-x\C-w" 'macroexpand-last-sexp))))
 
+(defun doe nil "Toggle [`debug-on-error']"
+  (interactive)
+  (setq debug-on-error (if debug-on-error nil t)))
+
 (provide 'elisp-extras)
 

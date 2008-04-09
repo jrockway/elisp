@@ -21,10 +21,12 @@
 
 (defun cperl-repl ()
   (interactive)
+  (require 'stylish-repl)
   (split-window)
-  (if (get-buffer "*perl-repl*")
-      (switch-to-buffer "*perl-repl*")
-    (ansi-term "/home/jon/perl/install/bin/re.pl" "perl-repl")))
+  (stylish-repl))
+;  (if (get-buffer "*perl-repl*")
+;      (switch-to-buffer "*perl-repl*")
+;    (ansi-term "/home/jon/perl/install/bin/re.pl" "perl-repl")))
 
 (defun kill-5.10 ()
   (interactive)
