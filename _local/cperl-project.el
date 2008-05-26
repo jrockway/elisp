@@ -49,7 +49,7 @@ the current buffer's filename if FILENAME is not specified."
   "Returns t if we are looking-at requires or build_requires.
 Sets match; capture 1 is the requires keyword (or
 build_requires), capture 2 is the module name"
-  (looking-at "\\(\\(?:build_\\)?requires\\)[[:space:]]+[^[:alpha:]]+\\([[:alpha:]:]+\\)"))
+  (looking-at "\\(\\(?:build_\\)?requires\\)[[:space:]]+[^A-Za-z9-0_]+\\([A-Za-z0-9_:]+\\)"))
 
 (defun parse-requires-line ()
   "Looks for a requires 'Foo' or build_requires 'Foo' statement
