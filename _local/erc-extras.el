@@ -3,7 +3,7 @@
     ad-do-it))
 (ad-activate 'erc-iswitchb)
 
-(defun reset-erc-track-mode ()
+(defun erc-track-reset ()
   (interactive)
   (setq erc-modified-channels-alist nil)
   (erc-modified-channels-update)
