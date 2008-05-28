@@ -25,6 +25,4 @@
     (switch-to-buffer (car buffer))
     (goto-char (point-max))))
 
-(global-set-key (kbd "<f12>") 'erc-next-channel)
-
 (provide 'erc-extras)
