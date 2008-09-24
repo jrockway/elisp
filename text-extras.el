@@ -18,4 +18,13 @@ get to the line (instead of the default `previous-line')."
   (interactive "kCharacter: ")
   (dotimes (i (number-of-chars-in-line-above)) (insert char)))
 
+(defun as-one-line nil
+  (interactive)
+  (save-excursion
+    (with-temp-buffer
+      (yank)
+      (goto-char (point-min))
+      (fill-paragraph)
+      (kill-region (point-min) (point-max)))))
+
 (provide 'text-extras)
