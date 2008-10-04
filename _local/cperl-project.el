@@ -15,7 +15,7 @@
 (defun find-tests-other-window ()
   (interactive)
   (base-find-tests 'find-file-other-window))
-   
+
 (defun perl-project-includes (&optional filename)
   "Given FILENAME (by default, `buffer-file-name'), return list of -I
 flags to pass to perl."
@@ -39,11 +39,11 @@ the current buffer's filename if FILENAME is not specified."
           (setq filename (expand-file-name (concat filename "/../"))))))
     (or found (error "No Makefile.PL found!"))))
 
-(defun perl-module-test-file-p (filename) 
+(defun perl-module-test-file-p (filename)
   (if (string-match "/t/.+[.]t$" filename) t nil))
 
-(defun perl-module-lib-file-p (filename) 
-  (if (string-match "/lib/.+[.]pm$" filename) t nil))      
+(defun perl-module-lib-file-p (filename)
+  (if (string-match "/lib/.+[.]pm$" filename) t nil))
 
 (defun looking-at-requires ()
   "Returns t if we are looking-at requires or build_requires.
@@ -63,13 +63,13 @@ and build-requires lists accordingly"
                         (goto-char (match-end 0))
                         (forward-char)
                         (skip-chars-forward "[:space:]=>")
-                        (if (re-search-forward 
+                        (if (re-search-forward
                              "\\(['\"]\\)\\(.+\\)\\1" eol t)
                             (match-string-no-properties 0)
                           nil))))
            (result (if version (cons module version) module))
            slot)
-      (cond 
+      (cond
        ((equal type "requires") (setq slot 'requires))
        ((equal type "build_requires") (setq slot 'build-requires)))
       (add-to-list slot result))))
@@ -118,7 +118,7 @@ regenerate them from the REQUIRES list"
     (save-excursion-rewind ; first, blow away requires
       (while (zerop (forward-line 1))
         (if (looking-at-requires)
-            (progn 
+            (progn
               (if (not where) (setq where (point))) ; save start position
               (delete-region (bounds-of (beginning-of-line))
                              (bounds-of (end-of-line) (forward-char)))
@@ -131,10 +131,10 @@ regenerate them from the REQUIRES list"
         (if (not (save-excursion (forward-line -1) (looking-at "^$")))
             (insert "\n"))
         (mapc (lambda (arg) (write-requires-line (car arg) (cdr arg)))
-              (append 
-               (mapcar (lambda (arg) (cons "requires" arg)) 
+              (append
+               (mapcar (lambda (arg) (cons "requires" arg))
                        (car requires))
-               (mapcar (lambda (arg) (cons "build_requires" arg)) 
+               (mapcar (lambda (arg) (cons "build_requires" arg))
                        (cdr requires)))))))
 
 (defun add-requires-to-Makefile.PL (makefile requires &optional build-requires)
@@ -158,7 +158,7 @@ the list to the build_requires section."
   (let* ((f (buffer-file-name))
          (makefile (look-for-Makefile.PL f)))
     (cond
-     ((perl-module-lib-file-p f) 
+     ((perl-module-lib-file-p f)
       (add-requires-to-Makefile.PL makefile modules))
      ((perl-module-test-file-p f)
       (add-requires-to-Makefile.PL makefile nil modules))
@@ -175,18 +175,18 @@ the list to the build_requires section."
   (find-file (look-for-Makefile.PL)))
 
 (defun search-for-perl-files (dir sub)
-  (search-directory-tree 
-   (expand-file-name (concat dir "/" sub)) 
-   "\\.\\(?:pm\\|t\\|pl\\)$" t nil))
+  (search-directory-tree
+   (expand-file-name (concat dir "/" sub))
+   "\\.\\(?:pm\\|t\\|pl\\|html\\|tmpl\\|tt2?\\)$" t nil))
 
 (defun mk-shortened-filename-pair (shorten-regexp filename)
   (string-match shorten-regexp filename)
   (cons (match-string 1 filename) filename))
 
 (defun perl-files-in-dir (dir)
-  (mapcar (lambda (filename) 
-            (mk-shortened-filename-pair 
-             "\\(?:lib\\|t\\|bin\\|script\\)/\\(.+\\)$"
+  (mapcar (lambda (filename)
+            (mk-shortened-filename-pair
+             "\\(?:lib\\|t\\|bin\\|script\\|root\\)/\\(.+\\)$"
              filename))
           (cons
            (expand-file-name (concat dir "/Makefile.PL"))
@@ -194,7 +194,8 @@ the list to the build_requires section."
             (search-for-perl-files dir "lib")
             (search-for-perl-files dir "t")
             (search-for-perl-files dir "bin")
-            (search-for-perl-files dir "script")))))
+            (search-for-perl-files dir "script")
+            (search-for-perl-files dir "root")))))
 
 ;(perl-files-in-dir "/home/jon/projects/angerwhale")
 
@@ -206,14 +207,14 @@ the list to the build_requires section."
   (interactive)
   (let* ((path (expand-file-name (concat (look-for-Makefile.PL from) "/../")))
          (friendly-alist (perl-files-in-dir path)))
-         (find-file 
+         (find-file
           (icomplete-read-with-alist "Project file: " friendly-alist))))
 
 ;(ifind-perl-project-file "/home/jon/projects/angerwhale/lib")
 
 (defun ifind-perl-projects ()
   (interactive)
-  (let ((candidates (append 
+  (let ((candidates (append
                      (directory-files "/home/jon/projects" t)
                      (directory-files "/home/jon/work" t)
                      (directory-files "/home/jon/projects/cpan_modules" t)))
@@ -223,7 +224,7 @@ the list to the build_requires section."
       (setq candidates (cdr candidates))
       (if (file-exists-p (expand-file-name (concat current "/Makefile.PL")))
         (setq filtered (cons current filtered))))
-    (let ((clist (mapcar (lambda (f) 
+    (let ((clist (mapcar (lambda (f)
                            (mk-shortened-filename-pair "/\\([^/]+\\)$" f))
                  filtered)))
       (ifind-perl-project-file (icomplete-read-with-alist "Project: " clist)))))
