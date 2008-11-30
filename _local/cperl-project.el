@@ -4,7 +4,8 @@
 
 (define-project-type perl (generic)
   (or (look-for "Makefile.PL") (look-for "Build.PL"))
-  ("\\.pm$" "\\.t$" "\\.pl$" "\\.PL$"))
+  :relevant-files ("\\.pm$" "\\.t$" "\\.pl$" "\\.PL$")
+  :main-file "Makefile.PL")
 
 (defun cperl--tests ()
   (eproject-assert-type 'perl)

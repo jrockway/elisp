@@ -17,6 +17,7 @@
     (lambda (directory)
       (let ((dname (file-name-nondirectory directory)))
         (file-exists-p (format "%s/%s.asd" directory dname)))))
-  ("\\.lisp$" "\\.asd"))
+  :relevant-files ("\\.lisp$" "\\.asd")
+  :main-file "package.lisp")
 
 (provide 'lisp-extras)
