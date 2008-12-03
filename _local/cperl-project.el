@@ -9,7 +9,7 @@
 
 (defun cperl--tests ()
   (eproject-assert-type 'perl)
-  (concat eproject-root "/t"))
+  (concat (eproject-root) "/t"))
 
 (defun cperl--base-find-tests (find-function)
   (funcall find-function (cperl--tests)))
@@ -25,17 +25,23 @@
 (defun perl-project-includes ()
   "Return list of -I flags to pass to perl."
   (eproject-assert-type 'perl)
-  (list (concat eproject-root "/lib")))
+  (list (concat (eproject-root) "/lib")))
 
 (defun look-for-Makefile.PL ()
   (eproject-assert-type 'perl)
-  (concat eproject-root "/Makefile.PL"))
+  (concat (eproject-root) "/Makefile.PL"))
 
 (defun perl-module-test-file-p (filename)
   (if (string-match "/t/.+[.]t$" filename) t nil))
 
 (defun perl-module-lib-file-p (filename)
   (if (string-match "/lib/.+[.]pm$" filename) t nil))
+
+(add-hook 'perl-project-file-visit-hook
+          (lambda ()
+            (ignore-errors
+              (stylish-repl-eval-perl
+               (format "use lib '%s'" (car (perl-project-includes)))))))
 
 (provide 'cperl-project)
 (require 'cperl-makefile)
