@@ -1444,7 +1444,7 @@ the last)."
 	    cperl-white-and-comment-rex ; 4 = pre-package-name
 	       "\\([a-zA-Z_0-9:']+\\)\\)?\\)" ; 5 = package-name
        "\\|"
-          "[ \t]*sub"
+          "[ \t]*\\(?:sub\\|method\\|before\\|after\\|around\\)"
 	  (cperl-after-sub-regexp 'named nil) ; 8=name 11=proto 14=attr-start
 	  cperl-maybe-white-and-comment-rex	; 15=pre-block
    "\\|"
@@ -2971,7 +2971,7 @@ Will not look before LIM."
 						(point) 'attrib-group)))
 				   ((eq (preceding-char) ?b)
 				    (forward-sexp -1)
-				    (looking-at "sub\\>")))
+				    (looking-at "\\(?:sub\\|method\\|before\\|after\\|around\\)\\>")))
 			     (setq p (nth 1 ; start of innermost containing list
 					  (parse-partial-sexp
 					   (save-excursion (beginning-of-line)
@@ -4757,7 +4757,7 @@ the sections using `cperl-pod-head-face', `cperl-pod-face',
 		   (and (eq (preceding-char) ?b)
 			(progn
 			  (forward-sexp -1)
-			  (looking-at "sub[ \t\n\f#]")))))))))
+			  (looking-at "\\(?:sub\\|method\\|before\\|after\\|around\\)[ \t\n\f#]")))))))))
 
 ;;; What is the difference of (cperl-after-block-p lim t) and (cperl-block-p)?
 ;;; No save-excursion; condition-case ...  In (cperl-block-p) the block
@@ -4791,10 +4791,13 @@ statement would start; thus the block in ${func()} does not count."
 			;; sub f {}
 			(progn
 			  (cperl-backward-to-noncomment lim)
-			  (and (eq (preceding-char) ?b)
+			  (and (or (eq (preceding-char) ?b)  ; sub
+                                   (eq (preceding-char) ?d)  ; method, around
+                                   (eq (preceding-char) ?e)  ; before
+                                   (eq (preceding-char) ?r)) ; after
 			       (progn
 				 (forward-sexp -1)
-				 (looking-at "sub[ \t\n\f#]"))))))
+				 (looking-at "\\(?:sub\\|method\\|before\\|after\\|around\\)[ \t\n\f#]"))))))
 		;; What preceeds is not word...  XXXX Last statement in sub???
 		(cperl-after-expr-p lim))))
       (error nil))))
