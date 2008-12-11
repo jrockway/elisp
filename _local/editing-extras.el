@@ -41,6 +41,21 @@ the current line to the end of the previous line."
       (set-visited-file-name new-name)
       (set-buffer-modified-p modified-p))))
 
+(defun kill-and-close ()
+  (interactive)
+  (kill-buffer)
+  (delete-window))
+
+(require 'eproject) ;; this is really bad "refactoring"
+(defun iswitch-windows ()
+  (interactive)
+  (let* ((names-map (loop for win in (window-list (selected-frame) t)
+                          collect (cons (buffer-name (window-buffer win)) win)))
+         (names (mapcar #'car names-map)))
+    (select-window
+     (cdr (assoc (eproject--icompleting-read "Window: " names) names-map)))))
+
+(global-set-key (kbd "C-x w") 'iswitch-windows)
 (global-set-key (kbd "C-x ,") 'move-line-up)
 (global-set-key (kbd "C-x .") 'move-next-line-up)
 (global-set-key (kbd "M-D") 'erase-current-word)

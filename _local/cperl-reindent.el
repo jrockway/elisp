@@ -8,15 +8,15 @@
   (let ((state 0) pos)
     (save-excursion
       (while (>= state 0)
-        (if (not (re-search-backward 
+        (if (not (re-search-backward
                   (format "\\(%s\\)\\|\\(%s\\)"
                           (regexp-opt (list "[" "(" "{")) ; opening
                           (regexp-opt (list "]" ")" "}"))) ; closing
                   nil t))
-            
+
             ; no match, break out of loop
             (setq state -1)
-          
+
           (if (match-string-no-properties 2) ; opening or closing?
               (progn (setq state (+ state 1)))
             (setq state (- state 1))
@@ -27,7 +27,7 @@
   "Narrow from the point to the nearest unmatched opening thingie"
   (interactive)
   (let ((start (+ 1 (look-for-opening-without-close))) (end (point)))
-    (save-excursion 
+    (save-excursion
       (goto-char start)
       (when (looking-at "\n")
         (next-line)

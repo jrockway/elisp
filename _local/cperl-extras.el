@@ -10,7 +10,7 @@
 (require 'cperl-reindent)
 (provide 'cperl-extras)
 
-(add-hook 'cperl-mode-hook 
+(add-hook 'cperl-mode-hook
           (lambda ()
             (local-set-key "\C-ct" 'increment-test-counter)
             (local-set-key "\C-cu" 'add-use)
@@ -24,10 +24,10 @@
             (local-set-key "\C-c\C-p" 'ifind-perl-projects)
             (local-set-key "\C-c510" 'kill-5.10)
             (local-set-key "\C-cr" 'cperl-repl)
-            (local-set-key (quote [C-tab]) (quote cperl-reindent-hash))
+            (local-set-key (quote [M-tab]) (quote cperl-reindent-hash))
             (local-set-key "\C-cq" 'find-module)))
 
-(add-hook 'tt-mode-hook 
+(add-hook 'tt-mode-hook
           (lambda ()
             (local-set-key "\C-c\C-f" 'ifind-perl-project-file)))
 
