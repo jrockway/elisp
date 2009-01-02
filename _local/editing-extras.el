@@ -48,9 +48,10 @@ the current line to the end of the previous line."
 
 (require 'eproject) ;; this is really bad "refactoring"
 (defun iswitch-windows ()
+  "Bring up a list of windows in the current frame, and prompt for one to switch to."
   (interactive)
-  (let* ((names-map (loop for win in (window-list (selected-frame) t)
-                          collect (cons (buffer-name (window-buffer win)) win)))
+  (let* ((names-map (cdr (loop for win in (window-list (selected-frame) t)
+                               collect (cons (buffer-name (window-buffer win)) win))))
          (names (mapcar #'car names-map)))
     (select-window
      (cdr (assoc (eproject--icompleting-read "Window: " names) names-map)))))
