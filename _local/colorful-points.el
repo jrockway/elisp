@@ -5,17 +5,13 @@
 (defvar colorful-points-colors '("blue" "purple" "green" "orange" "yellow" "red")
   "Colors that the points can be.  Chosen in order.")
 
-(define-minor-mode colorful-points-mode
-  "Give each point in buffer a unique color."
-  nil
-  " Colorful"
-  nil
+(define-minor-mode colorful-points-mode "Give each point in buffer a unique color." nil
+  " Colorful" nil
   (if colorful-points-mode
       (progn ;; turning on
         (make-variable-buffer-local 'after-change-functions)
         (setq after-change-functions (cons #'colorful-points-after-change after-change-functions))
         (colorful-points-after-change))
-
     (progn ;; turning off
       (mapc #'delete-overlay (mapcar #'cdr colorful-points))
       (setq after-change-functions
@@ -26,8 +22,7 @@
   (let ((colors colorful-points-colors))
     (loop for color in
           (mapcar (lambda (cell) (getf (overlay-get (cdr cell) 'face) :background)) colorful-points)
-          do (progn
-               (setq colors (delete color colors))))
+          do (setq colors (remove color colors))))
     (or (car colors) (nth (random (length colorful-points-colors)) colorful-points-colors))))
 
 (defun colorful-points--overlay-for-window (win)
