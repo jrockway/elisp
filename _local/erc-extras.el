@@ -10,7 +10,7 @@
   (erc-modified-channels-display)
   (force-mode-line-update t))
 
-(defun erc-go-away nil
+(defun erc-go-away ()
   (interactive)
   (loop for buf in (buffer-list)
         when (with-current-buffer buf (eq 'erc-mode major-mode))
