@@ -1,3 +1,0 @@
-### DEFAULT.tpl --- (>>>POINT<<<)
-
-

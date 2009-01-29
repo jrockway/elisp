@@ -7,6 +7,38 @@
   :relevant-files ("\\.pm$" "\\.t$" "\\.pl$" "\\.PL$")
   :main-file "Makefile.PL")
 
+(defun cperl-mxdeclare-project-p ()
+  "Determine if this project should use MooseX::Declare class definitions."
+  (ignore-errors
+    (eproject-assert-type 'perl)
+    (let ((root (eproject-root)))
+      (file-exists-p (concat root "/.mxdeclare_project")))))
+
+(defun cperl-convert-moose-to-mxdeclare ()
+  "Convert a regular 'use Moose' class to a MX::Declare class."
+  (interactive)
+  (save-match-data
+    (save-excursion
+      (goto-char (point-min))
+      (when (re-search-forward "package \\(.+\\);\n*" nil t)
+        (let (start (module (match-string 1)))
+          (replace-match "use MooseX::Declare;\n\n")
+          (cond ((re-search-forward "use Moose::Role;\n*" nil t)
+                 (replace-match (format "role %s {\n" module)))
+                ((re-search-forward "use Moose;\n*" nil t)
+                 (replace-match (format "class %s {\n" module)))
+                (t (error "No Moose class found!")))
+          (setq start
+                (save-excursion
+                  (goto-char (car (match-data 0)))
+                  (line-beginning-position)))
+          (cond ((re-search-forward "\n*1;\n*")
+                 (replace-match "\n};\n\n1;\n"))
+                (t
+                 (goto-char (point-max))
+                 (insert "\n\n};\n\n1;\n")))
+          (indent-region start (point-max)))))))
+
 (defun cperl--tests ()
   (eproject-assert-type 'perl)
   (concat (eproject-root) "/t"))
