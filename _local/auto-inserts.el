@@ -1,10 +1,9 @@
 ;;; auto-inserts.el --- my auto-inserts
 (require 'cperl-extras)
-(require 'auto-insert)
+(require 'autoinsert)
 
 (defadvice after-find-file (before ad-mkdir-after-find-file activate)
   "Make the directory containing the visited file."
-  (message "OK")
   (make-directory (file-name-directory (buffer-file-name)) t))
 
 (defun my-perl-module-autoinsert ()
