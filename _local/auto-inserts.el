@@ -39,7 +39,20 @@ class %s {
 use strict;
 use warnings;
 use feature ':5.10';
-"))
+")
+  (when (y-or-n-p "Add FindBin boilerplate? ")
+    (insert
+"
+use FindBin qw($Bin);
+use lib \"$Bin/../lib\";
+")
+    (when (y-or-n-p "Add MX::Getopt invocation? ")
+      (let ((mod (read-from-minibuffer "Module: ")))
+        (insert (format "
+use %s;
+%s->new_with_options->run;
+" mod mod))))))
+
 
 (defun my-perl-test-autoinsert ()
   (insert
@@ -70,7 +83,7 @@ use Test::More tests => 10;
 " asd-pkg asd-pkg pkg pkg))))
 
 
-(setq auto-insert-alist nil)
+;; (setq auto-insert-alist nil)
 (define-auto-insert '("[.]pm$" . "Perl class") #'my-perl-module-autoinsert)
 (define-auto-insert '("[.]pl$" . "Perl script") #'my-perl-script-autoinsert)
 (define-auto-insert '("[.]t$" . "Perl test") #'my-perl-test-autoinsert)
