@@ -32,5 +32,11 @@ This is used for the initial name given to IRC buffers."
    (if target (generate-new-buffer-name target)
      (concat "*" (process-name process) "*"))))
 
+(defun irc-go-away ()
+  (interactive)
+  (loop for buf in (buffer-list)
+        when (with-current-buffer buf (eq 'rcirc-mode major-mode))
+        do (bury-buffer buf)))
+
 (provide 'rcirc-extras)
 ;;; rcirc-extras.el ends here
