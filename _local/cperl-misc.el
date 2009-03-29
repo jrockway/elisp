@@ -15,6 +15,16 @@
     (ansi-term "/home/jon/perl/install/bin/cpanp" "cpan-install")
     (term-send-raw-string (format "install %s\n" module))))
 
+(defun cpan-module-docs ()
+  (interactive)
+  (let ((module (read-with-default "Module" (thing-at-point 'perl-module)
+                                   "What module do you want?")))
+    (browse-url (format "http://search.cpan.org/perldoc?%s" module))))
+
+(defun cpan-search (query)
+  (interactive "sQuery: ")
+  (browse-url (format "http://search.cpan.org/search?query=%s&mode=all" query)))
+
 (global-set-key "\C-c\C-i" 'cpan-install)
 
 (provide 'cperl-misc)
