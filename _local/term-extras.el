@@ -24,25 +24,41 @@
 
 ;;; Code:
 
-(defvar snap-to-terminal-history nil
-  "The window that was active before we snapped to the terminal.")
+(defvar snap-history nil
+  "The window we snapped from.
+Shared between all snappers... I think this makes sense.")
 
-(defun snap-to-terminal ()
-  (interactive)
-  (cond ((and (eq major-mode 'term-mode) snap-to-terminal-history)
-         (select-window snap-to-terminal-history))
-        ((eq major-mode 'term-mode)
-         (error "Didn't snap to this terminal, don't know what to do."))
-        (t
-         (setq snap-to-terminal-history (selected-window))
-         (let ((term (find-if (lambda (x)
-                                (with-selected-window x
-                                  (eq major-mode 'term-mode)))
-                              (window-list (selected-frame)))))
-           (if term (select-window term)
-             (error "No terminal to snap to.  Make one, then re-run."))))))
+(defmacro make-snapper (name test-form)
+  `(defun ,(intern (format "snap-to-%s" name)) ()
+     (interactive)
+     (cond ((and ,test-form snap-history)
+            (select-window snap-history))
+           (,test-form
+            (error "Didn't snap here, don't know what to do."))
+           (t
+            (setq snap-history (selected-window))
+            (let ((win (find-if (lambda (x)
+                                   (with-selected-window x ,test-form))
+                                 (window-list (selected-frame)))))
+              (if win (select-window win)
+                (error "Nothing to snap to.  Make something, then re-run.")))))))
+
+
+(make-snapper terminal (eq major-mode 'term-mode))
+(make-snapper slime-repl (eq major-mode 'slime-repl-mode))
+(make-snapper ghci (eq major-mode 'inferior-haskell-mode))
 
 (global-set-key (kbd "C-x x") 'snap-to-terminal)
 
+(add-hook 'lisp-mode-hook
+          (lambda () (local-set-key (kbd "C-x x") 'snap-to-slime-repl)))
+
+(add-hook 'haskell-mode-hook
+          (lambda () (local-set-key (kbd "C-x x") 'snap-to-ghci)))
+
+(add-hook 'inferor-haskell-mode-hook
+          (lambda () (local-set-key (kbd "C-x x") 'snap-to-ghci)))
+
 (provide 'term-extras)
-;;; term-extras.el ends here
+
+;;; So long, and thanks for reminding me of fish.

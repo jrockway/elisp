@@ -28,7 +28,7 @@ use Moose;
 
 class %s {
 
-};
+}
 
 1;" package-name)))))
 

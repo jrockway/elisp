@@ -1,7 +1,7 @@
 
 (defun xmms-jump-to-song (song)
   (interactive "sSearch term: ")
-  (shell-command-to-string (concat "/home/jon/utils/xmmsjump " song)))
+  (shell-command-to-string (concat "xmmsjump " song)))
 
 (defun xmms-seek (time)
   (interactive "NPosition: ")
