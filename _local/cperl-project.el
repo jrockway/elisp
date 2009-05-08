@@ -12,7 +12,7 @@
   (ignore-errors
     (eproject-assert-type 'perl)
     (let ((root (eproject-root)))
-      (file-exists-p (concat root "/.mxdeclare_project")))))
+      (file-exists-p (concat root ".mxdeclare_project")))))
 
 (defun cperl-convert-moose-to-mxdeclare ()
   "Convert a regular 'use Moose' class to a MX::Declare class."
