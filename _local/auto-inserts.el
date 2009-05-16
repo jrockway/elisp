@@ -26,11 +26,10 @@ use Moose;
 " package-name))
       (insert (format "use MooseX::Declare;
 
-class %s {
+%s %s {
 
 }
-
-1;" package-name)))))
+" (if (string-match-p "Role::" package-name) "role" "class") package-name)))))
 
 (defun my-perl-script-autoinsert ()
   (insert
