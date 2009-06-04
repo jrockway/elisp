@@ -1,18 +1,18 @@
 
 (require 'eproject)
-(require 'icomplete-read)
 
 (define-project-type perl (generic)
   (or (look-for "Makefile.PL") (look-for "Build.PL"))
   :relevant-files ("\\.pm$" "\\.t$" "\\.pl$" "\\.PL$")
+  :irrelevant-files ("inc/" "blib/" "cover_db/")
+  :mxdeclare-project-p (lambda (root)
+                          (file-exists-p (concat root ".mxdeclare_project")))
   :main-file "Makefile.PL")
 
 (defun cperl-mxdeclare-project-p ()
   "Determine if this project should use MooseX::Declare class definitions."
   (ignore-errors
-    (eproject-assert-type 'perl)
-    (let ((root (eproject-root)))
-      (file-exists-p (concat root ".mxdeclare_project")))))
+    (eproject-attribute :mxdeclare-project-p)))
 
 (defun cperl-convert-moose-to-mxdeclare ()
   "Convert a regular 'use Moose' class to a MX::Declare class."
@@ -61,7 +61,7 @@
 
 (defun look-for-Makefile.PL ()
   (eproject-assert-type 'perl)
-  (concat (eproject-root) "/Makefile.PL"))
+  (concat (eproject-root) "Makefile.PL"))
 
 (defun perl-module-test-file-p (filename)
   (if (string-match "/t/.+[.]t$" filename) t nil))
