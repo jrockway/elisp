@@ -23,6 +23,7 @@
 ;;
 
 ;;; Code:
+(require 'cl)
 
 (defvar snap-history nil
   "The window we snapped from.
@@ -44,14 +45,21 @@ Shared between all snappers... I think this makes sense.")
                 (error "Nothing to snap to.  Make something, then re-run.")))))))
 
 
-(make-snapper terminal (eq major-mode 'term-mode))
+(make-snapper terminal (or (eq major-mode 'term-mode) (eq major-mode 'eshell-mode)))
 (make-snapper slime-repl (eq major-mode 'slime-repl-mode))
 (make-snapper ghci (eq major-mode 'inferior-haskell-mode))
+(make-snapper ielm (equal (buffer-name) "*ielm*"))
 
 (global-set-key (kbd "C-x x") 'snap-to-terminal)
 
 (add-hook 'lisp-mode-hook
           (lambda () (local-set-key (kbd "C-x x") 'snap-to-slime-repl)))
+
+(add-hook 'emacs-lisp-mode-hook
+          (lambda () (local-set-key (kbd "C-x x") 'snap-to-ielm)))
+
+(add-hook 'ielm-mode-hook
+          (lambda () (local-set-key (kbd "C-x x") 'snap-to-ielm)))
 
 (add-hook 'haskell-mode-hook
           (lambda () (local-set-key (kbd "C-x x") 'snap-to-ghci)))
