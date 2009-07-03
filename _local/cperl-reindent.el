@@ -57,11 +57,15 @@
     ret))
 
 (defun cperl-reindent-hash nil
-  "Inside an `sexp' that contains pairs, reformat the pairs correctly."
+  "Inside an `sexp' that contain pairs, reformat the pairs correctly."
   (interactive)
-  (save-restriction
-    (narrow-to-sexp-area)
-    (save-excursion
+  (save-excursion
+    (save-restriction
+      (when (save-excursion
+              (forward-line 0)
+              (looking-at "[[:space:]]*[})];?"))
+        (forward-line 0))
+      (narrow-to-sexp-area)
       (goto-char (point-min))
       (let ((target (+ 1 (cperl-reindent-hash-target))))
         (goto-char (point-min))
