@@ -1,7 +1,8 @@
 
-(defun xmms-jump-to-song (song)
-  (interactive "sSearch term: ")
-  (shell-command-to-string (concat "xmmsjump " song)))
+(defun xmms-jump-to-song (song which)
+  "Jump to a song named SONG; if there is more than one, the `prefix-arg' WHICH will disambiguate them."
+  (interactive "sSearch term: \np")
+  (shell-command-to-string (format "xmmsjump %s %d" song which)))
 
 (defun xmms-seek (time)
   (interactive "NPosition: ")
