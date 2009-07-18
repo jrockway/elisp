@@ -3,10 +3,12 @@
 
 (require 'my-macros)
 (require 'eproject)
+(require 'eproject-extras)
 
 (defun eshell/clear ()
   "Clear the screen."
   (dotimes (i 50) (eshell-print "\n"))
+  ;;(recenter 1)
   nil)
 
 (define-invoke-for-each eshell/byte-compile-file byte-compile-file
