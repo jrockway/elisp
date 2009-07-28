@@ -34,7 +34,7 @@
   (set (make-local-variable 'compile-command)
        (format "cd %s; cabal configure; cabal build" (eproject-root))))
 
-(add-hook 'haskell-project-visit-file-hook #'setup-haskell-project-build)
+(add-hook 'haskell-project-file-visit-hook #'setup-haskell-project-build)
 
 (provide 'haskell-extras)
 ;;; haskell-extras.el ends here
