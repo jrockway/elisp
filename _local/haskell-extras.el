@@ -27,7 +27,7 @@
 (require 'eproject)
 
 (define-project-type haskell (generic)
-  (look-for "*.cabal" :glob)
+  (look-for "*?.cabal" :glob)
   :relevant-files ("\\.hs" "\\.cabal" "\\.lhs"))
 
 (defun setup-haskell-project-build ()
