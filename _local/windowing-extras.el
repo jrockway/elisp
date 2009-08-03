@@ -19,21 +19,23 @@ the following keybinding in."
         when (with-current-buffer buf (funcall predicate buf))
         return (with-current-buffer buf (funcall predicate buf))))
 
+(defun first-irc-window ()
+  "Return the first IRC window."
+  (first-matching-buffer (lambda (x) (and (eq major-mode 'rcirc-mode)
+                                          x))))
 (defun fix-windows ()
   "Setup my window config."
   (interactive)
   (let ((current-project
          (first-matching-buffer (lambda (x) (ignore-errors (eproject-name)))))
-        (current-irc-window
-         (first-matching-buffer (lambda (x) (and (eq major-mode 'rcirc-mode)
-                                                 x))))
+        (current-irc-window (first-irc-window))
         (current-shell
-         (or (first-matching-buffer (lambda (x)
-                                      (and (or (eq major-mode 'eshell-mode)
-                                               (eq major-mode 'term-mode))
-                                           x)))
+         (or (first-matching-buffer
+              (lambda (x)
+                (and (or (eq major-mode 'eshell-mode)
+                         (eq major-mode 'term-mode))
+                     x)))
              (eshell))))
-
     (delete-other-windows)
     (split-window-horizontally)
     (split-window-horizontally)
@@ -55,5 +57,40 @@ the following keybinding in."
                                       x))))
               (setf cur (buffer-name (current-buffer))))))
     (balance-windows)))
+
+(defun first-window ()
+  "Return the first window."
+  (nth 0 (window-number-list)))
+
+(defun ensure-irc-window ()
+  (unless (with-current-buffer (window-buffer (first-window))
+            (eq major-mode 'rcirc-mode))
+    (split-window (first-window))
+    (set-window-buffer (first-window) (first-irc-window)))
+  (first-window))
+
+(defun toggle-irc-window ()
+  "Hide the IRC window, if displayed; otherwise show it."
+  (interactive)
+    (cond ((with-current-buffer (window-buffer (first-window))
+             (eq major-mode 'rcirc-mode))
+           (delete-window (first-window)))
+          (t (ensure-irc-window)))
+    (balance-windows))
+
+(defun next-active-irc-channel ()
+  "Show the next IRC channel with activity, in the \"dedicated\" IRC window."
+  (interactive)
+  (select-window (ensure-irc-window))
+  (rcirc-next-active-buffer nil))
+
+(defun next-active-irc-or-toggle ()
+  "Show the next active IRC window, or toggle the IRC window if there's no activity."
+  (interactive)
+  (if rcirc-activity
+      (next-active-irc-channel)
+    (toggle-irc-window)))
+
+(global-set-key (kbd "<f2>") #'next-active-irc-or-toggle)
 
 (provide 'windowing-extras)
