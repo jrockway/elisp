@@ -41,7 +41,7 @@ Shared between all snappers... I think this makes sense.")
             (let ((win (find-if (lambda (x)
                                    (with-selected-window x ,test-form))
                                  (window-list (selected-frame)))))
-              (if win (select-window win)
+              (if win (progn (select-window win) (goto-char (point-max)))
                 (error "Nothing to snap to.  Make something, then re-run.")))))))
 
 
