@@ -27,7 +27,7 @@
 (require 'htmlize)
 
 (defun rcirc-xmonad-write (data)
-  (shell-command (format "echo ': %s' > /tmp/a.fifo" data)))
+  (shell-command (format "echo ': %s' > /home/jon/tmp/emacs.fifo" data)))
 
 (defun rcirc-xmonad-notify ()
   (rcirc-xmonad-write (xmobarize-string rcirc-activity-string)))
