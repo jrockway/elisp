@@ -27,7 +27,8 @@
 (require 'htmlize)
 
 (defun rcirc-xmonad-write (data)
-  (shell-command (format "echo ': %s' > /home/jon/tmp/emacs.fifo" data)))
+  (start-process "rcirc-xmonad-writer" nil "sh" "-c"
+                 (format "echo ': %s' > /home/jon/tmp/emacs.fifo &" data)))
 
 (defun rcirc-xmonad-notify ()
   (rcirc-xmonad-write (xmobarize-string rcirc-activity-string)))
@@ -66,7 +67,20 @@
 
       (goto-char (point-min))
       (while (re-search-forward "\\(?:<b>\\|</b>\\)" nil t)
-        (replace-match "")))))
+        (replace-match ""))
+
+      ;; wow, this is some good programming here...
+      (goto-char (point-min))
+      (while (re-search-forward "&amp;" nil t)
+        (replace-match "&"))
+
+      (goto-char (point-min))
+      (while (re-search-forward "&lt;" nil t)
+        (replace-match "<"))
+
+      (goto-char (point-min))
+      (while (re-search-forward "&gt;" nil t)
+        (replace-match ">")))))
 
 (provide 'rcirc-xmonad-notify)
 ;;; rcirc-xmonad-notify.el ends here
