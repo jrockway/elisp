@@ -84,4 +84,5 @@
                (format "use lib '%s'" (car (perl-project-includes)))))))
 
 (provide 'cperl-project)
+(require 'cperl-project-starter)
 (require 'cperl-makefile)

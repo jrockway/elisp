@@ -1,5 +1,6 @@
 ;;; auto-inserts.el --- my auto-inserts
 (require 'cperl-extras)
+(require 'cperl-project)
 (require 'autoinsert)
 
 (defadvice after-find-file (before ad-mkdir-after-find-file activate)
@@ -7,17 +8,18 @@
   (make-directory (file-name-directory (buffer-file-name)) t))
 
 (defun my-perl-module-autoinsert ()
+  (maybe-init-perl-project)
   (eproject-maybe-turn-on)
   (let ((package-name ;;; cut-n-pasted from my template.el stuff; FIXME
          (let ((filename (buffer-file-name)))
-           (if (string-match "lib/\\(.+\\)[.]pm$" filename)
-               (let ((mod (match-string 1 filename)))
-                 (while (string-match "/" mod)
-                   (setq mod (replace-match "::" nil nil mod)))
-                 mod)
-             (if (string-match "\\([^/]+\\)[.]pm$" filename)
-                 (match-string 1 filename)
-               "UNKNOWN")))))
+           (cond ((or (string-match "/lib/\\(.+\\)[.]pm$" filename)
+                      (string-match "/\\(t/.+\\)[.]pm$" filename)
+                      (string-match "\\([^/]+\\)[.]pm$" filename))
+                  (let ((mod (match-string 1 filename)))
+                    (while (string-match "/" mod)
+                      (setq mod (replace-match "::" nil nil mod)))
+                    mod))
+                  (t "UNKNOWN")))))
     (if (not (cperl-mxdeclare-project-p))
         (insert (format "package %s;
 use Moose;
@@ -45,13 +47,7 @@ use feature ':5.10';
 "
 use FindBin qw($Bin);
 use lib \"$Bin/../lib\";
-")
-    (when (y-or-n-p "Add MX::Getopt invocation? ")
-      (let ((mod (read-from-minibuffer "Module: ")))
-        (insert (format "
-use %s;
-%s->new_with_options->run;
-" mod mod))))))
+")))
 
 
 (defun my-perl-test-autoinsert ()
