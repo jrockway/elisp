@@ -21,6 +21,7 @@
     (if (not (cperl-mxdeclare-project-p))
         (insert (format "package %s;
 use Moose;
+use namespace::autoclean;
 
 1;
 " package-name))
