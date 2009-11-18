@@ -46,6 +46,7 @@
                                                :name project-name)
       (cperl-project-starter-build-MANIFEST.SKIP :root root :name project-name)
       (cperl-project-starter-build-Changes :root root :name project-name)
+      (cperl-project-starter-build-eproject :root root)
 
       (magit-run-git "commit" "-m" "project boilerplate added")))
 
@@ -83,6 +84,7 @@ inc
 pm_to_blib
 MANIFEST
 Makefile.old
+TAGS
 %s*" name))))
 
 (defun* cperl-project-starter-build-MANIFEST.SKIP (&key root name)
@@ -95,12 +97,17 @@ MANIFEST.SKIP~
 cover_db
 Makefile$
 Makefile.old$
+TAGS
 %s-.*/
 %s.*.tar.gz" name name))))
 
 (defun* cperl-project-starter-build-Changes (&key root name)
   (cperl-project-starter-make-file (root "Changes")
     (insert (format "Change history for %s\n" name))))
+
+(defun* cperl-project-starter-build-eproject (&key root)
+  (cperl-project-starter-make-file (root ".eproject")
+    (insert ":mxdeclare-project-p t\n")))
 
 (provide 'cperl-project-starter)
 ;;; cperl-project-starter.el ends here
