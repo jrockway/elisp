@@ -9,14 +9,18 @@
   (interactive)
   (let ((module (read-with-default "Module" (thing-at-point 'perl-module)
                                    "You must specify a module to use!"))
-        after statement before)
+        after statement before space)
     (save-excursion-rewind
       (condition-case nil
-          (while (re-search-forward "^\\(use [A-Z][[:alnum:]:]+\;\\)" nil t)
-            (setq after (match-string 1)))
-        (error (goto-char (point-min))))
+          (progn
+            (while (re-search-forward "^\\(?:class\\|role\\)[^{]+{" nil t)
+              (setq after (match-string 0)))
+            (while (re-search-forward "^\\([[:space:]]*\\)use [A-Za-z][[:alnum:]:]+\;" nil t)
+              (setq space (match-string 1))
+              (setq after (match-string 0))))
+            (error (goto-char (point-min))))
       (end-of-line)
-      (setq statement (concat "use " (add-semicolon module)))
+      (setq statement (concat space "use " (add-semicolon module)))
       (insert (concat "\n" statement))
       (message (format "Added '%s' after '%s'" statement after)))))
 
