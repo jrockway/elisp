@@ -51,11 +51,10 @@ use lib \"$Bin/../lib\";
 
 
 (defun my-perl-test-autoinsert ()
-  (insert
-"use strict;
-use warnings;
-use Test::More tests => 10;
-"))
+  (insert "use strict;\nuse warnings;\nuse Test::More;\n")
+  (let ((p (point)))
+    (insert "\ndone_testing;")
+    (goto-char (1+ p))))
 
 (defun my-lisp-asd-autoinsert ()
   (let ((asd-pkg (format "%s-asd"
