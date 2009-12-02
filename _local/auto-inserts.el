@@ -8,7 +8,8 @@
   (make-directory (file-name-directory (buffer-file-name)) t))
 
 (defun my-perl-module-autoinsert ()
-  (maybe-init-perl-project)
+  "Create a project and delegates to other helper functions to fill in this file."
+  (ignore-errors (maybe-init-perl-project))
   (eproject-maybe-turn-on)
   (let ((package-name ;;; cut-n-pasted from my template.el stuff; FIXME
          (let ((filename (buffer-file-name)))
