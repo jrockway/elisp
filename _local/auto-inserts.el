@@ -21,19 +21,37 @@
                       (setq mod (replace-match "::" nil nil mod)))
                     mod))
                   (t "UNKNOWN")))))
-    (if (not (cperl-mxdeclare-project-p))
-        (insert (format "package %s;
+    (funcall
+     (cond ((string-match-p "::Types$" package-name) #'autoinsert-perl-typelibrary)
+           ((cperl-mxdeclare-project-p) #'autoinsert-perl-mxdeclare-library)
+           (t #'autoinsert-perl-library))
+     package-name)))
+
+(defun autoinsert-perl-library (package-name)
+  (insert (format "package %s;
 use Moose;
 use namespace::autoclean;
 
 1;
-" package-name))
-      (insert (format "use MooseX::Declare;
+" package-name)))
+
+(defun autoinsert-perl-mxdeclare-library (package-name)
+  (insert (format "use MooseX::Declare;
 
 %s %s {
 
 }
-" (if (string-match-p "Role::" package-name) "role" "class") package-name)))))
+" (if (string-match-p "Role::" package-name) "role" "class") package-name)))
+
+(defun autoinsert-perl-typelibrary (package-name)
+  (insert (format "package %s;
+use strict;
+use warnings;
+
+use MooseX::Types -declare => [''];
+
+1;
+" package-name)))
 
 (defun my-perl-script-autoinsert ()
   (insert
