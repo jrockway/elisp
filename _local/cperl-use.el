@@ -22,6 +22,8 @@
       (end-of-line)
       (setq statement (concat space "use " (add-semicolon module)))
       (insert (concat "\n" statement))
+      (indent-region (line-beginning-position)
+                     (line-end-position))
       (message (format "Added '%s' after '%s'" statement after)))))
 
 (provide 'cperl-use)
