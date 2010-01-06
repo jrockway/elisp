@@ -34,24 +34,26 @@
 (defun maybe-init-perl-project ()
   "Create a git + cpan project for the file visited by the current buffer."
   (let* ((filename (buffer-file-name))
-         (root (and (string-match "^\\(.+/\\)lib/.+[.]pm$" filename)
-                    (match-string 1 filename)))
-         (project-name (file-name-nondirectory (directory-file-name root)))
-         (default-directory root))
+         (root (and (string-match "^\\(.+/\\)lib/.+[.]pm$" filename) ; seeing lib/ ensures that this is really
+                                                                     ; a project and not a one-off thing
+                    (match-string 1 filename))))
+    (when root
+      (let* ((project-name (file-name-nondirectory (directory-file-name root)))
+             (default-directory root))
 
-    (when (not (already-have-perl-project-p root))
-      (magit-init root)
-      (cperl-project-starter-build-gitignore :root root :name project-name)
-      (cperl-project-starter-build-Makefile.PL :root root :all-from filename
-                                               :name project-name)
-      (cperl-project-starter-build-MANIFEST.SKIP :root root :name project-name)
-      (cperl-project-starter-build-Changes :root root :name project-name)
-      (cperl-project-starter-build-eproject :root root)
+        (when (not (already-have-perl-project-p root))
+          (magit-init root)
+          (cperl-project-starter-build-gitignore :root root :name project-name)
+          (cperl-project-starter-build-Makefile.PL :root root :all-from filename
+                                                   :name project-name)
+          (cperl-project-starter-build-MANIFEST.SKIP :root root :name project-name)
+          (cperl-project-starter-build-Changes :root root :name project-name)
+          (cperl-project-starter-build-eproject :root root)
 
-      (magit-run-git "commit" "-m" "project boilerplate added")))
+          (magit-run-git "commit" "-m" "project boilerplate added"))
 
-      (ignore-errors (eproject-reinitialize-project))
-      (eproject-maybe-turn-on))
+        (ignore-errors (eproject-reinitialize-project))
+        (eproject-maybe-turn-on)))))
 
 (defun cperl-project-starter-git-init (root)
   (shell-command (format "cd %s; git init" root)))
