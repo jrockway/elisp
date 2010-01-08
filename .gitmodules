@@ -7,3 +7,6 @@
 [submodule "eslide"]
 	path = eslide
 	url = git://github.com/jrockway/eslide
+[submodule "magit"]
+	path = magit
+	url = git://gitorious.org/magit/mainline.git
