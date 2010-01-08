@@ -1,0 +1,9 @@
+[submodule "cperl-mode"]
+	path = cperl-mode
+	url = git://github.com/jrockway/cperl-mode
+[submodule "eproject"]
+	path = eproject
+	url = git://github.com/jrockway/eproject
+[submodule "eslide"]
+	path = eslide
+	url = git://github.com/jrockway/eslide
