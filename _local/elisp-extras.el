@@ -15,8 +15,6 @@
   (interactive)
   (setq debug-on-error (if debug-on-error nil t)))
 
-(require 'slime-fontifying-fu)
-
 (add-hook 'emacs-lisp-mode-hook
           (lambda ()
             (font-lock-add-keywords 'emacs-lisp-mode slime-additional-font-lock-keywords)))
