@@ -1,3 +1,5 @@
+(require 'slime-load) ;; for slime-additional-font-lock-keywords
+
 (defun macroexpand-last-sexp ()
   (interactive)
   (prin1 (macroexpand
