@@ -64,7 +64,7 @@ Shared between all snappers... I think this makes sense.")
 (add-hook 'haskell-mode-hook
           (lambda () (local-set-key (kbd "C-x x") 'snap-to-ghci)))
 
-(add-hook 'inferor-haskell-hook ;; this is misnamed.
+(add-hook 'inferior-haskell-hook ;; this is misnamed.
           (lambda () (local-set-key (kbd "C-x x") 'snap-to-ghci)))
 
 (provide 'term-extras)
