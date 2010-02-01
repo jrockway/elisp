@@ -8,10 +8,20 @@
 (require 'cperl-project)
 (require 'cperl-moose)
 (require 'cperl-reindent)
-(provide 'cperl-extras)
+
+(defun cperl-run-tests-in-eshell (&optional prefix)
+  (interactive "p")
+  (let ((eshell-buf (eproject-eshell-cd-here prefix)))
+    (with-current-buffer eshell-buf
+      (goto-char (point-max))
+      (eshell-preinput-scroll-to-bottom)
+      (insert "prove --lib t")
+      (eshell-send-input nil t)
+      (eshell-postoutput-scroll-to-bottom))))
 
 (add-hook 'cperl-mode-hook
           (lambda ()
+            (local-set-key (kbd "C-c C-l") 'cperl-run-tests-in-eshell)
             (local-set-key "\C-ct" 'increment-test-counter)
             (local-set-key "\C-cu" 'add-use)
             (local-set-key "\C-cmu" 'add-Makefile.PL-requires)
@@ -32,3 +42,5 @@
             (local-set-key "\C-c\C-f" 'ifind-perl-project-file)))
 
 (global-set-key "\C-c\C-p" 'ifind-perl-projects)
+
+(provide 'cperl-extras)
