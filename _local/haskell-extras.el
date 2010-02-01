@@ -28,13 +28,10 @@
 
 (define-project-type haskell (generic)
   (look-for "*?.cabal" :glob)
-  :relevant-files ("\\.hs" "\\.cabal" "\\.lhs"))
-
-(defun setup-haskell-project-build ()
-  (set (make-local-variable 'compile-command)
-       (format "cd %s; cabal configure; cabal build" (eproject-root))))
-
-(add-hook 'haskell-project-file-visit-hook #'setup-haskell-project-build)
+  :relevant-files ("\\.hs" "\\.cabal" "\\.lhs" "\\.chs")
+  :local-variables (lambda (root)
+                     (list 'compile-command
+                           (format "cd %s; cabal configure; cabal build" root))))
 
 (provide 'haskell-extras)
 ;;; haskell-extras.el ends here
