@@ -10,3 +10,6 @@
 [submodule "magit"]
 	path = magit
 	url = git://gitorious.org/magit/mainline.git
+[submodule "slime"]
+	path = slime
+	url = git://github.com/nablaone/slime.git
