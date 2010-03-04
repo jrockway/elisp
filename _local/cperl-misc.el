@@ -56,7 +56,7 @@
                                    "You must specify a module!"))
         (cperl-no-flymake t))
     (find-file (with-temp-buffer
-                 (shell-command (format "/home/jon/perl/install/bin/perldoc -l %s" module) (current-buffer))
+                 (shell-command (format "perldoc -l %s" module) (current-buffer))
                  (goto-char (point-min))
                  (if (looking-at "\\(.+\\)")
                      (match-string 0)
