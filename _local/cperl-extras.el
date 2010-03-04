@@ -11,11 +11,14 @@
 
 (defun cperl-run-tests-in-eshell (&optional prefix)
   (interactive "p")
-  (let ((eshell-buf (eproject-eshell-cd-here prefix)))
+  (let* ((name (file-relative-name (buffer-file-name) (eproject-root)))
+         (eshell-buf (eproject-eshell-cd-here prefix)))
     (with-current-buffer eshell-buf
       (goto-char (point-max))
       (eshell-preinput-scroll-to-bottom)
-      (insert "prove --lib t")
+      (if (string-match ".t$" name)
+          (insert (format "perl -Ilib %s" name))
+        (insert "prove --lib -j3 t"))
       (eshell-send-input nil t)
       (eshell-postoutput-scroll-to-bottom))))
 
