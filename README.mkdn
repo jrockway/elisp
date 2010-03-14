@@ -1,0 +1,33 @@
+So apparently this repository is pretty popular now.  I tend to use
+this repository as a dump for experimental code -- it can completely
+change without notice at any time, totally ruining your emacs init
+process.  It's just support for my `.emacs`, it's not something I
+intended for other people to fork and use.  Instead of nopasting
+snippets when someone asks on IRC, I can just link them here.
+
+If there's something you'd like to rely on for daily use, just send me
+an email (via github or real email; doesn't matter to me) saying you'd
+like to use it.  Then I can split it out into its own project,
+worrying about things like documentation, non-conflicting namespaces,
+etc.  This is not worth the effort if nobody but me uses something,
+but if other people are going to use the code, we should work to make
+it as compatable and conventional as possible
+
+You also get the added benefit of being able to include the new
+project as a submodule in your own configuration, like I do with
+eproject, eslide, slime, etc.  And of course, if you find and fix a
+bug, you can patch the project, and everyone else using the module
+gets the fix too when they update their repository.  Much better than
+cutting-and-pasting your favorite parts and having to fix some bug
+that 18 other people already did.
+
+With that in mind, everything in the root directory is stock code from
+somewhere else (either as a submodule, or cut-n-pasted from some place
+that doesn't provide a repository; eww), and everything in `_local` is
+new code I've written.  Customizations and extra features for existing
+modes tend to be named `foo-extras.el`.  Other things are named
+however I feel like :)
+
+Share, enjoy, and send me email and patches!
+
+--jrockway
