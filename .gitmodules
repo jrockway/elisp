@@ -13,3 +13,6 @@
 [submodule "slime"]
 	path = slime
 	url = git://github.com/nablaone/slime.git
+[submodule "ibuffer-git"]
+	path = ibuffer-git
+	url = git://github.com/jrockway/ibuffer-git

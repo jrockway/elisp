@@ -37,7 +37,8 @@
             (local-set-key "\C-c\C-p" 'ifind-perl-projects)
             (local-set-key "\C-c510" 'kill-5.10)
             (local-set-key "\C-cr" 'cperl-repl)
-            (local-set-key (quote [M-tab]) (quote cperl-reindent-hash))
+            (local-set-key (quote [M-tab]) 'cperl-reindent-hash)
+            (local-set-key (kbd "M-C-i") 'cperl-reindent-hash)
             (local-set-key "\C-cq" 'find-module)))
 
 (add-hook 'tt-mode-hook
