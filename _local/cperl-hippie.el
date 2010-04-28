@@ -49,6 +49,9 @@
                      collect (concat prefix attribute)))))
 
 (defun try-complete-moose-method (old)
+  "A function for `hippie-expand-try-functions-list' that understands Moose.
+Argument OLD is automatically provided by `hippie-expand'; nil
+the first time the function is called, t every other time."
   (when (not old)
     (he-init-string (he-lisp-symbol-beg) (point))
     (setf he-expand-list
@@ -56,9 +59,10 @@
            (buffer-substring-no-properties (he-lisp-symbol-beg) (point)))))
 
   (if (null he-expand-list)
-      (he-reset-string)
+      (progn (he-reset-string) nil)
     (he-substitute-string (car he-expand-list))
-    (setq he-expand-list (cdr he-expand-list))))
+    (setq he-expand-list (cdr he-expand-list))
+    t))
 
 (provide 'cperl-hippie)
 ;;; cperl-hippie.el ends here
