@@ -18,7 +18,7 @@
       (eshell-preinput-scroll-to-bottom)
       (if (string-match ".t$" name)
           (insert (format "perl -Ilib %s" name))
-        (insert "prove --lib -j3 t"))
+        (insert "prove --lib -r -j3 t"))
       (eshell-send-input nil t)
       (eshell-postoutput-scroll-to-bottom))))
 
