@@ -53,7 +53,9 @@ Shared between all snappers... I think this makes sense.")
 (global-set-key (kbd "C-x x") 'snap-to-terminal)
 
 (add-hook 'lisp-mode-hook
-          (lambda () (local-set-key (kbd "C-x x") 'snap-to-slime-repl)))
+          (lambda ()
+            (when (not (eq major-mode 'emacs-lisp-mode))
+              (local-set-key (kbd "C-x x") 'snap-to-slime-repl))))
 
 (add-hook 'emacs-lisp-mode-hook
           (lambda () (local-set-key (kbd "C-x x") 'snap-to-ielm)))
