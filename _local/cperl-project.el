@@ -77,12 +77,6 @@
 (defun perl-module-lib-file-p (filename)
   (if (string-match "/lib/.+[.]pm$" filename) t nil))
 
-(add-hook 'perl-project-file-visit-hook
-          (lambda ()
-            (ignore-errors
-              (stylish-repl-eval-perl
-               (format "use lib '%s'" (car (perl-project-includes)))))))
-
 (provide 'cperl-project)
 (require 'cperl-project-starter)
 (require 'cperl-makefile)
