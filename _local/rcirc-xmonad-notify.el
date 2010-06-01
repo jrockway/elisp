@@ -30,8 +30,8 @@
   (start-process "rcirc-xmonad-writer" nil "sh" "-c"
                  (format "echo ': %s' > /home/jon/tmp/emacs.fifo &" data)))
 
-(defun rcirc-xmonad-notify ()
-  (rcirc-xmonad-write (xmobarize-string rcirc-activity-string)))
+(defun rcirc-xmonad-notify () nil)
+;;  (rcirc-xmonad-write (xmobarize-string rcirc-activity-string)))
 
 (add-hook 'rcirc-update-activity-string-hook #'rcirc-xmonad-notify)
 
