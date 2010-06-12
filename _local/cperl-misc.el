@@ -27,17 +27,6 @@
 
 (global-set-key "\C-c\C-i" 'cpan-install)
 
-(provide 'cperl-misc)
-
-(defun cperl-repl ()
-  (interactive)
-  (require 'stylish-repl)
-  (split-window)
-  (stylish-repl))
-;  (if (get-buffer "*perl-repl*")
-;      (switch-to-buffer "*perl-repl*")
-;    (ansi-term "/home/jon/perl/install/bin/re.pl" "perl-repl")))
-
 (defun kill-5.10 ()
   (interactive)
   (save-excursion
@@ -61,3 +50,5 @@
                  (if (looking-at "\\(.+\\)")
                      (match-string 0)
                    (error "Could not read the module path!"))))))
+
+(provide 'cperl-misc)
