@@ -26,7 +26,7 @@
       (cperl-run-tests-in-eshell-1 prefix cperl-last-test)
     (cperl-run-tests-in-eshell prefix)))
 
-(defun cperl-run-tests-in-eshell-1 (prefix test)
+(defun cperl-run-tests-in-eshell-1 (prefix &optional test)
   "Run the named test in the visible eshell.
 
 <picture of cat using eshell with caption: VISIBLE ESHELL>.
