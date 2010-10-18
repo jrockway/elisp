@@ -14,9 +14,8 @@
             (when (re-search-forward "-[[:space:]]*\\(.+\\)$" (line-end-position) t)
               (let ((abstract (match-string 1)))
                 (message "abstract: %s" abstract)
-                (delete-region found-name (progn (re-search-forward "^=") (line-beginning-position)))
+                (delete-region found-name (if (re-search-forward "^=" nil t)
+                                              (line-beginning-position)
+                                            (point-max)))
                 (goto-char package-end)
-                (insert (format "\n# ABSTRACT: %s\n" abstract))))))))))
-
-
-               
+                (insert (format "\n# ABSTRACT: %s" abstract))))))))))

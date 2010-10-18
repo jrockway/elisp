@@ -78,76 +78,9 @@
        (write-file (concat ,root ,file))
        (magit-run-git "add" (concat ,root ,file)))))
 
-(defun* cperl-project-starter-build-Makefile.PL (&key root all-from name)
-  (cperl-project-starter-make-file (root "Makefile.PL")
-    (insert (format "use inc::Module::Install;
-use strict;
-
-name '%s';
-all_from '%s';
-
-WriteAll;
-" name (file-relative-name all-from root)))))
-
-
 (defun* cperl-project-starter-build-dist.ini (&key root name)
   (cperl-project-starter-make-file (root "dist.ini")
-    (insert (concat (format "
-name = %s
-author = Jonathan Rockway <jrockway@cpan.org>
-license = Perl_5
-copyright_holder = Jonathan Rockway <jrockway@cpan.org>
-copyright_year = %s" name (elt (decode-time) 5)) "
-
-[AutoPrereqs]
-
-[AutoVersion]
-
-[PkgVersion]
-
-[MetaConfig]
-
-[NextRelease]
-format = %-9v    %{EEE LLL d hh:mm:ss vvv YYYY}d
-
-[PodSyntaxTests]
-
-[PodWeaver]
-
-[Repository]
-
-[GatherDir]
-
-[PruneCruft]
-
-[ManifestSkip]
-
-[MetaYAML]
-
-[License]
-
-[Readme]
-
-[ExtraTests]
-
-[ExecDir]
-
-[ShareDir]
-
-[MakeMaker]
-
-[Manifest]
-
-[TestRelease]
-
-[@Git]
-tag_format  = %v
-tag_message = %v CPAN release
-
-[ConfirmRelease]
-
-[UploadToCPAN]
-"))))
+    (insert (format "name = %s\n[@JROCKWAY]\n" name))))
 
 (defun* cperl-project-starter-build-gitignore (&key root name)
   (cperl-project-starter-make-file (root ".gitignore")
@@ -155,27 +88,13 @@ tag_message = %v CPAN release
 TAGS
 %s*" name))))
 
-(defun* cperl-project-starter-build-MANIFEST.SKIP (&key root name)
-  (cperl-project-starter-make-file (root "MANIFEST.SKIP")
-    (insert (format ".git/
-blib
-pm_to_blib
-MANIFEST.bak
-MANIFEST.SKIP~
-cover_db
-Makefile$
-Makefile.old$
-TAGS
-%s-.*/
-%s.*.tar.gz" name name))))
-
 (defun* cperl-project-starter-build-Changes (&key root name)
   (cperl-project-starter-make-file (root "Changes")
     (insert (format "Change history for %s\n{{$NEXT}}\n" name))))
 
 (defun* cperl-project-starter-build-eproject (&key root)
   (cperl-project-starter-make-file (root ".eproject")
-    (insert ":mxdeclare-project-p t\n")))
+    (insert ":mxdeclare-project-p nil\n")))
 
 (provide 'cperl-project-starter)
 ;;; cperl-project-starter.el ends here
