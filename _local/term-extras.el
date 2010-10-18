@@ -24,6 +24,10 @@
 
 ;;; Code:
 (require 'cl)
+(require 'lisp-mode)
+(require 'haskell-mode)
+(require 'ielm)
+(require 'haskell-ghci)
 
 (defvar snap-history nil
   "The window we snapped from.
@@ -52,22 +56,11 @@ Shared between all snappers... I think this makes sense.")
 
 (global-set-key (kbd "C-x x") 'snap-to-terminal)
 
-(add-hook 'lisp-mode-hook
-          (lambda ()
-            (when (not (eq major-mode 'emacs-lisp-mode))
-              (local-set-key (kbd "C-x x") 'snap-to-slime-repl))))
-
-(add-hook 'emacs-lisp-mode-hook
-          (lambda () (local-set-key (kbd "C-x x") 'snap-to-ielm)))
-
-(add-hook 'ielm-mode-hook
-          (lambda () (local-set-key (kbd "C-x x") 'snap-to-ielm)))
-
-(add-hook 'haskell-mode-hook
-          (lambda () (local-set-key (kbd "C-x x") 'snap-to-ghci)))
-
-(add-hook 'inferior-haskell-hook ;; this is misnamed.
-          (lambda () (local-set-key (kbd "C-x x") 'snap-to-ghci)))
+(define-key lisp-mode-map             (kbd "C-x x") 'snap-to-slime-repl)
+(define-key emacs-lisp-mode-map       (kbd "C-x x") 'snap-to-ielm)
+(define-key ielm-map                  (kbd "C-x x") 'snap-to-ielm)
+(define-key haskell-mode-map          (kbd "C-x x") 'snap-to-ghci)
+(define-key inferior-haskell-mode-map (kbd "C-x x") 'snap-to-ghci)
 
 (provide 'term-extras)
 
