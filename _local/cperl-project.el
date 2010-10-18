@@ -2,7 +2,7 @@
 (require 'eproject)
 
 (define-project-type perl (generic)
-  (or (look-for "Makefile.PL") (look-for "Build.PL"))
+  (or (look-for "dist.ini") (look-for "Makefile.PL") (look-for "Build.PL"))
   :relevant-files ("\\.pm$" "\\.t$" "\\.pl$" "\\.PL$")
   :irrelevant-files ("inc/" "blib/" "cover_db/")
   :mxdeclare-project-p (lambda (root)
