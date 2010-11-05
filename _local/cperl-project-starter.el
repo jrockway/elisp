@@ -36,7 +36,7 @@
       (and (file-exists-p (concat root ".git"))
            (or (file-exists-p (concat root "dist.ini"))
                (file-exists-p (concat root "Makefile.PL"))
-               (file-exists-p (concat root "Buile.PL"))))))
+               (file-exists-p (concat root "Build.PL"))))))
 
 (defun maybe-init-perl-project ()
   "Create a git + cpan project for the file visited by the current buffer."
@@ -84,9 +84,7 @@
 
 (defun* cperl-project-starter-build-gitignore (&key root name)
   (cperl-project-starter-make-file (root ".gitignore")
-    (insert (format "cover_db
-TAGS
-%s*" name))))
+    (insert (format "cover_db\nTAGS\n%s*\n.build\n" name))))
 
 (defun* cperl-project-starter-build-Changes (&key root name)
   (cperl-project-starter-make-file (root "Changes")

@@ -30,9 +30,10 @@
 (defun autoinsert-perl-library (package-name)
   (insert (format "package %s;
 use Moose;
+
+use true;
 use namespace::autoclean;
 
-1;
 " package-name)))
 
 (defun autoinsert-perl-mxdeclare-library (package-name)
@@ -49,8 +50,8 @@ use strict;
 use warnings;
 
 use MooseX::Types -declare => [''];
+use true;
 
-1;
 " package-name)))
 
 (defun my-perl-script-autoinsert ()
