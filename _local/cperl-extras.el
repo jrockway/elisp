@@ -26,6 +26,16 @@
       (cperl-run-tests-in-eshell-1 prefix cperl-last-test)
     (cperl-run-tests-in-eshell prefix)))
 
+(defun cperl-run-tests-test-command (test)
+  (if (eproject-attribute :cperl-tests-need-blib)
+      (format "perl -Mblib %s" test)
+    (format "perl -Ilib %s" test)))
+
+(defun cperl-run-tests-prove-command ()
+  (if (eproject-attribute :cperl-tests-need-blib)
+      "prove --blib -r -j3 t"
+    "prove --lib -r -j3 t"))
+
 (defun cperl-run-tests-in-eshell-1 (prefix &optional test)
   "Run the named test in the visible eshell.
 
@@ -33,16 +43,17 @@
 
 PREFIX is the prefix arg to pass to `eproject-eshell-cd-here',
 TEST is the test to run, or NIL for all of them."
-  (with-current-buffer (eproject-eshell-cd-here prefix)
-    (eshell-preinput-scroll-to-bottom)
-    (goto-char (point-max))
-    (if test
-        (insert (format "perl -Ilib %s" test))
-      (insert "prove --lib -r -j3 t"))
-    (eshell-send-input nil t)
-    (goto-char (point-max))
-    (ignore-errors
-      (set-window-point (get-buffer-window) (point-max)))))
+  (let ((command (if test
+                     (cperl-run-tests-test-command test)
+                 (cperl-run-tests-prove-command))))
+    (with-current-buffer (eproject-eshell-cd-here prefix)
+      (eshell-preinput-scroll-to-bottom)
+      (goto-char (point-max))
+      (insert command)
+      (eshell-send-input nil t)
+      (goto-char (point-max))
+      (ignore-errors
+        (set-window-point (get-buffer-window) (point-max))))))
 
 
 (add-hook 'cperl-mode-hook
