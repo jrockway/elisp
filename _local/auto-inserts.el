@@ -29,11 +29,12 @@
 
 (defun autoinsert-perl-library (package-name)
   (insert (format "package %s;
+# ABSTRACT:
 use Moose;
-
 use true;
 use namespace::autoclean;
 
+__PACKAGE__->meta->make_immutable;
 " package-name)))
 
 (defun autoinsert-perl-mxdeclare-library (package-name)
@@ -46,6 +47,7 @@ use namespace::autoclean;
 
 (defun autoinsert-perl-typelibrary (package-name)
   (insert (format "package %s;
+# ABSTRACT:
 use strict;
 use warnings;
 
