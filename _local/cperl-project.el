@@ -15,6 +15,9 @@
                                 (setf m (replace-match "::" nil nil m)))
                               m))
                            (t file))))
+  :xs-project-p (lambda (root)
+                  (let ((default-directory root))
+                    (> (length (file-expand-wildcards "*.xs")) 0)))
   :main-file "Makefile.PL")
 
 (defun cperl-mxdeclare-project-p ()
