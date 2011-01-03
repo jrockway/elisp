@@ -7,8 +7,8 @@
 
 (defun eshell/clear ()
   "Clear the screen."
-  (dotimes (i 50) (eshell-print "\n"))
-  ;;(recenter 1)
+  (let ((inhibit-read-only t))
+    (delete-region (point-min) (point)))
   nil)
 
 (define-invoke-for-each eshell/byte-compile-file byte-compile-file
