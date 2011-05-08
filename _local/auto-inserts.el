@@ -24,17 +24,27 @@
     (funcall
      (cond ((string-match-p "::Types$" package-name) #'autoinsert-perl-typelibrary)
            ((cperl-mxdeclare-project-p) #'autoinsert-perl-mxdeclare-library)
-           (t #'autoinsert-perl-library))
+           ((string-match-p "\\<Role\\>" package-name) #'autoinsert-perl-role)
+           (t #'autoinsert-perl-class))
      package-name)))
 
-(defun autoinsert-perl-library (package-name)
+(defun autoinsert-perl-class (package-name)
   (insert (format "package %s;
 # ABSTRACT:
 use Moose;
-use true;
 use namespace::autoclean;
 
 __PACKAGE__->meta->make_immutable;
+1;
+" package-name)))
+
+(defun autoinsert-perl-role (package-name)
+  (insert (format "package %s;
+# ABSTRACT:
+use Moose::Role;
+use namespace::autoclean;
+
+1;
 " package-name)))
 
 (defun autoinsert-perl-mxdeclare-library (package-name)
