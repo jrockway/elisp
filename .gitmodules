@@ -1,21 +1,21 @@
 [submodule "cperl-mode"]
 	path = cperl-mode
-	url = git://github.com/jrockway/cperl-mode
+	url = https://github.com/jrockway/cperl-mode.git
 [submodule "eproject"]
 	path = eproject
-	url = git://github.com/jrockway/eproject
+	url = https://github.com/jrockway/eproject.git
 [submodule "eslide"]
 	path = eslide
-	url = git://github.com/jrockway/eslide
+	url = https://github.com/jrockway/eslide.git
 [submodule "magit"]
 	path = magit
-	url = git://gitorious.org/magit/mainline.git
+	url = https://github.com/philjackson/magit.git
 [submodule "slime"]
 	path = slime
-	url = git://github.com/nablaone/slime.git
+	url = https://github.com/nablaone/slime.git
 [submodule "ibuffer-git"]
 	path = ibuffer-git
-	url = git://github.com/jrockway/ibuffer-git
+	url = https://github.com/jrockway/ibuffer-git.git
 [submodule "gist.el"]
 	path = gist.el
-	url = http://github.com/defunkt/gist.el.git
+	url = https://github.com/defunkt/gist.el.git
