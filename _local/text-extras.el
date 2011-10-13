@@ -27,4 +27,20 @@ get to the line (instead of the default `previous-line')."
       (fill-paragraph)
       (kill-region (point-min) (point-max)))))
 
+(defun delete-trailing-whitespace-nothere ()
+  "Delete trailing whitespace, except on the current line if it is all whitespace."
+  (interactive)
+  (let (current-whitespace)
+    (when (save-excursion
+            (beginning-of-line)
+            (looking-at "\\([[:space:]]+\\)$"))
+      (setq current-whitespace (match-string 0)))
+    (delete-trailing-whitespace)
+    (save-excursion
+      (beginning-of-line)
+      (when current-whitespace
+        (insert current-whitespace)))
+    (when current-whitespace
+      (end-of-line))))
+
 (provide 'text-extras)

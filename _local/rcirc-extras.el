@@ -24,6 +24,16 @@
 
 ;;; Code:
 
+(require 'rcirc)
+
+(defun irc-start nil
+  "Connect to all my networks."
+  (interactive)
+  (let ((password (password-read "IRC password: "))
+        (host "itchy.internal"))
+    (loop for port from 6667 to 6678 do
+          (rcirc-connect host port "jrockway" "jrockway"
+                         "Jonathan Rockway" nil password))))
 
 (defun rcirc-generate-new-buffer-name (process target)
   "Return a buffer name based on PROCESS and TARGET.
@@ -37,6 +47,14 @@ This is used for the initial name given to IRC buffers."
   (loop for buf in (buffer-list)
         when (with-current-buffer buf (eq 'rcirc-mode major-mode))
         do (bury-buffer buf)))
+
+(add-hook 'rcirc-mode-hook (lambda () (flyspell-mode 1)))
+(add-hook 'rcirc-mode-hook (lambda () (rcirc-omit-mode)))
+(add-hook 'rcirc-mode-hook
+             (lambda ()
+               (when (or (= (aref (buffer-name) 0) ?#)
+                         (= (aref (buffer-name) 0) ?&))
+                 (setq rcirc-ignore-buffer-activity-flag t))))
 
 (provide 'rcirc-extras)
 ;;; rcirc-extras.el ends here
