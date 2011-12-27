@@ -48,6 +48,26 @@ This is used for the initial name given to IRC buffers."
         when (with-current-buffer buf (eq 'rcirc-mode major-mode))
         do (bury-buffer buf)))
 
+(defun irc-kill-connections ()
+  "Kill rcirc buffers, killing the server-buffer first."
+  (interactive)
+  (let ((kill-buffer-query-functions nil)
+        (killed-channels 0)
+        (killed-servers 0))
+    (loop for buf in (buffer-list) do
+          (with-current-buffer buf
+            (when (eq major-mode 'rcirc-mode)
+              (when (and (buffer-live-p rcirc-server-buffer))
+                (incf killed-servers)
+                (kill-buffer rcirc-server-buffer))
+              (when (buffer-live-p buf)
+                (incf killed-channels)
+                (kill-buffer buf)))))
+    (message "Killed %s channels and %s servers"
+             killed-channels
+             killed-servers)))
+
+
 (add-hook 'rcirc-mode-hook (lambda () (flyspell-mode 1)))
 (add-hook 'rcirc-mode-hook (lambda () (rcirc-omit-mode)))
 (add-hook 'rcirc-mode-hook
