@@ -16,6 +16,3 @@
 [submodule "ibuffer-git"]
 	path = ibuffer-git
 	url = https://github.com/jrockway/ibuffer-git.git
-[submodule "gist.el"]
-	path = gist.el
-	url = https://github.com/defunkt/gist.el.git
