@@ -1,6 +1,6 @@
 
-(defun insert-self-shift (noshift)
-  (interactive)
+(defun insert-self-shift (&optional noshift)
+  (interactive "*P")
   (if noshift
       (insert "my ($self) = @_;\n")
     (insert "my $self = shift;\n"))
