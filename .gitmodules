@@ -16,3 +16,6 @@
 [submodule "ibuffer-git"]
 	path = ibuffer-git
 	url = https://github.com/jrockway/ibuffer-git.git
+[submodule "haskell-mode"]
+        path = haskell-mode
+        url = https://github.com/haskell/haskell-mode.git
