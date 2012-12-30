@@ -110,12 +110,56 @@ use lib \"$Bin/../lib\";
                ))
 " asd-pkg asd-pkg pkg pkg))))
 
+(defun java-get-package-name (file)
+  (when (string-match
+         "src/\\(?:main\\|test\\)/java/\\(.+\\)/\\([^/]+\\)[.]java$" file)
+    (let ((package (match-string 1 file))
+          (class (match-string 2 file)))
+      (while (string-match "/" package)
+        (setq package (replace-match "." nil nil package)))
+
+      (list :package package
+            :test-p (string-match "Test$" class)
+            :class-name class))))
+
+(defun my-java-autoinsert ()
+  (let* ((java-state (java-get-package-name (buffer-file-name (current-buffer))))
+         (class-name (getf java-state :class-name))
+         (package (getf java-state :package))
+         (test-p (getf java-state :test-p)))
+    (if test-p
+        (insert (format
+"package %s;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+
+@RunWith(JUnit4.class)
+public class %s {
+
+    public %s() {}
+}
+" package class-name class-name))
+      (insert (format
+"package %s;
+
+public class %s {
+
+    public %s() {}
+}
+" package class-name class-name)))))
 
 ;; (setq auto-insert-alist nil)
 (define-auto-insert '("[.]pm$" . "Perl class") #'my-perl-module-autoinsert)
 (define-auto-insert '("[.]pl$" . "Perl script") #'my-perl-script-autoinsert)
 (define-auto-insert '("[.]t$" . "Perl test") #'my-perl-test-autoinsert)
 (define-auto-insert '("[.]asd$" . "Lisp system") #'my-lisp-asd-autoinsert)
+(define-auto-insert '("[.]java$" . "Java class") #'my-java-autoinsert)
 
 (provide 'auto-inserts)
 ;;; auto-insert.el ends here
