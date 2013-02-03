@@ -22,8 +22,8 @@
   (let ((colors colorful-points-colors))
     (loop for color in
           (mapcar (lambda (cell) (getf (overlay-get (cdr cell) 'face) :background)) colorful-points)
-          do (setq colors (remove color colors))))
-    (or (car colors) (nth (random (length colorful-points-colors)) colorful-points-colors)))
+          do (setq colors (remove color colors)))
+    (or (car colors) (nth (random (length colorful-points-colors)) colorful-points-colors))))
 
 (defun colorful-points--overlay-for-window (win)
   "Return the overlay representing WIN's point for the current buffer."
