@@ -629,6 +629,15 @@ buffer."
              (t
               (error "invalid rcs patch or internal error in go--apply-rcs-patch")))))))))
 
+(defvar gofmt-pre-window-conf nil
+  "The window configuration before gofmt popped up its error buffer.")
+
+(defun gofmt-cleanup ()
+  (when gofmt-pre-window-conf
+    (set-window-configuration gofmt-pre-window-conf)
+    (setq gofmt-pre-window-conf nil))
+  (kill-buffer (get-buffer-create "*Gofmt Errors*")))
+
 (defun gofmt ()
   "Formats the current buffer according to the gofmt tool."
 
@@ -653,11 +662,14 @@ buffer."
     (if (zerop (call-process gofmt-command nil errbuf nil "-w" tmpfile))
         (if (zerop (call-process-region (point-min) (point-max) "diff" nil patchbuf nil "-n" "-" tmpfile))
             (progn
-              (kill-buffer errbuf)
+              (gofmt-cleanup)
               (message "Buffer is already gofmted"))
           (go--apply-rcs-patch patchbuf)
-          (kill-buffer errbuf)
+          (gofmt-cleanup)
           (message "Applied gofmt"))
+
+      (when (not gofmt-pre-window-conf)
+        (setq gofmt-pre-window-conf (current-window-configuration)))
       (message "Could not apply gofmt. Check errors for details")
       (gofmt--process-errors (buffer-file-name) tmpfile errbuf))
 

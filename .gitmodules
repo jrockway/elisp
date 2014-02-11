@@ -10,9 +10,6 @@
 [submodule "magit"]
 	path = magit
 	url = https://github.com/philjackson/magit.git
-[submodule "slime"]
-	path = slime
-	url = https://github.com/nablaone/slime.git
 [submodule "ibuffer-git"]
 	path = ibuffer-git
 	url = https://github.com/jrockway/ibuffer-git.git
