@@ -112,7 +112,7 @@ use lib \"$Bin/../lib\";
 
 (defun java-get-package-name (file)
   (when (string-match
-         "src/\\(?:main\\|test\\)/java/\\(.+\\)/\\([^/]+\\)[.]java$" file)
+         "java\\(?:tests\\)?/\\(.+\\)/\\([^/]+\\)[.]java$" file)
     (let ((package (match-string 1 file))
           (class (match-string 2 file)))
       (while (string-match "/" package)
@@ -142,7 +142,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class %s {
 
-    public %s() {}
+  public %s() {}
 }
 " package class-name class-name))
       (insert (format
@@ -150,7 +150,7 @@ public class %s {
 
 public class %s {
 
-    public %s() {}
+  public %s() {}
 }
 " package class-name class-name)))))
 
