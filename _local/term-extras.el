@@ -27,7 +27,6 @@
 (require 'lisp-mode)
 (require 'haskell-mode)
 (require 'ielm)
-(require 'haskell-ghci)
 
 (defvar snap-history nil
   "The window we snapped from.
