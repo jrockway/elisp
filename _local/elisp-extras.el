@@ -1,3 +1,5 @@
+(require 'slime)
+
 (defun macroexpand-last-sexp ()
   (interactive)
   (prin1 (macroexpand
