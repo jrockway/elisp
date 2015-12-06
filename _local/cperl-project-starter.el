@@ -24,7 +24,6 @@
 
 ;;; Code:
 
-(require 'magit) ;; <3
 (require 'eproject)
 
 (defvar do-not-want-perl-project nil
