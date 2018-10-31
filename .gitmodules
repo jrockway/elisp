@@ -13,6 +13,3 @@
 [submodule "go-mode"]
 	path = go-mode
 	url = https://github.com/dominikh/go-mode.el
-[submodule "js2-mode"]
-	path = js2-mode
-	url = ./js2-mode
