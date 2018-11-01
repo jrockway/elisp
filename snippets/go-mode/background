@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: background context
+# key: bg
+# --
+ctx := context.Background()
