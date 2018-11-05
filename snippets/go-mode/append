@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: append to list
+# key: append
+# --
+$1 = append($1, $0)

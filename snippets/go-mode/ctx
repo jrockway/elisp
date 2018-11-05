@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: context type
+# key: ctx
+# --
+ctx context.Context, $0
