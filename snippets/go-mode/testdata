@@ -1,0 +1,13 @@
+# -*- mode: snippet -*-
+# name: testData
+# key: td
+# --
+testData := []struct{
+    $0
+}{
+    {},
+}
+
+for i, test := range testData {
+
+}
