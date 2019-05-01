@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: gotwant
+# key: gotwant
+# --
+:\n  got: %v\n want: %v"

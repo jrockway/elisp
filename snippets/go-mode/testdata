@@ -2,12 +2,15 @@
 # name: testData
 # key: td
 # --
-testData := []struct{
-    $0
-}{
-    {},
-}
+	testData := []struct{
+		name string
+		$0
+	}{
+		{},
+	}
 
-for i, test := range testData {
+	for _, test := range testData {
+		t.Run(test.name, func(t *testing.T) {
 
-}
+		})
+	}
