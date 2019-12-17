@@ -1,6 +1,3 @@
-[submodule "cperl-mode"]
-	path = cperl-mode
-	url = https://github.com/jrockway/cperl-mode.git
 [submodule "eproject"]
 	path = eproject
 	url = https://github.com/jrockway/eproject.git
@@ -10,6 +7,3 @@
 [submodule "ibuffer-git"]
 	path = ibuffer-git
 	url = https://github.com/jrockway/ibuffer-git.git
-[submodule "go-mode"]
-	path = go-mode
-	url = https://github.com/dominikh/go-mode.el
