@@ -1,6 +1,6 @@
 # -*- mode: snippet -*-
-# name: ef
-# key: ef
+# name: println
+# key: println
 # expand-env: ((yas-indent-line 'fixed) (yas-wrap-around-region 'nil))
 # --
-fmt.Errorf("$1: %w", $0err)
+fmt.Printf("$1\n", $0)

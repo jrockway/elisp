@@ -1,8 +1,7 @@
 # -*- mode: snippet -*-
 # name: if err := whatever; err != nil {}
-# key: err
-# condition: (looking-back "if.*err")
+# key: if
 # --
-err := $1; err != nil {
+if err := $1; err != nil {
 	$0
 }

@@ -1,16 +1,16 @@
 # -*- mode: snippet -*-
 # name: testData
 # key: td
+# expand-env: ((yas-indent-line 'fixed) (yas-wrap-around-region 'nil))
 # --
-	testData := []struct{
-		name string
-		$0
-	}{
-		{},
-	}
+testData := []struct{
+        name string
+$0}{
+        {},
+}
 
-	for _, test := range testData {
-		t.Run(test.name, func(t *testing.T) {
+for _, test := range testData {
+        t.Run(test.name, func(t *testing.T) {
 
-		})
-	}
+        })
+}

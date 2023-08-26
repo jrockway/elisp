@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: Require
+# key: req
+# --
+s.Require().

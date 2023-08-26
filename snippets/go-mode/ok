@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: if x, ok := something(); ok { ... }
+# key: ok
+# --
+if $1, ok := $2; ok {
+        $0
+}

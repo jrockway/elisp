@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: return a formatted error
+# key: return
+# --
+return fmt.Errorf("$1: %w", $0err)

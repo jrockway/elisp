@@ -1,6 +1,6 @@
 # -*- mode: snippet -*-
-# name: ef
-# key: ef
+# name: tef
+# key: tef
 # expand-env: ((yas-indent-line 'fixed) (yas-wrap-around-region 'nil))
 # --
-fmt.Errorf("$1: %w", $0err)
+t.Errorf("$1: %v", $0err)
