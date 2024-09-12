@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: log.Exit
+# key: exit
+# --
+err != nil {
+	log.Exit(ctx, "problem $0", zap.Error(err))
+}
